@@ -132,7 +132,7 @@ func generateScaffoldFromJSON(jsonPath string) {
 	if len(template.Requests) > 0 {
 		for requestName, requestFields := range template.Requests {
 			requestFileName := fmt.Sprintf("./data/requests/%s.go", requestName)
-			requestFileContent := generateRequestGo(requestName, requestFields, template.ProjectName)
+			requestFileContent := generateRequestGo(requestName, requestFields, template.ProjectName, template.Models)
 			err = os.WriteFile(requestFileName, []byte(requestFileContent), 0644)
 			if err != nil {
 				fmt.Printf("Error writing request.go: %v\n", err)
@@ -148,7 +148,7 @@ func generateScaffoldFromJSON(jsonPath string) {
 	if len(template.Responses) > 0 {
 		for responseName, responseFields := range template.Responses {
 			responseFileName := fmt.Sprintf("./data/responses/%s.go", responseName)
-			responseFileContent := generateResponseGo(responseName, responseFields, template.ProjectName)
+			responseFileContent := generateResponseGo(responseName, responseFields, template.ProjectName, template.Models)
 			err = os.WriteFile(responseFileName, []byte(responseFileContent), 0644)
 			if err != nil {
 				fmt.Printf("Error writing response.go: %v\n", err)
@@ -184,27 +184,41 @@ func generateModelGo(modelName string, fields interface{}, projectName string) s
 
 	return fmt.Sprintf(`package models
 
-import "%s/models"
-
 type %s struct {
 %s}
-`, projectName, modelName, modelFields)
+`, modelName, modelFields)
 }
 
 // generateRequestGo generates the Go code for requests from the JSON structure
-func generateRequestGo(requestName string, fields interface{}, projectName string) string {
+func generateRequestGo(requestName string, fields interface{}, projectName string, models map[string]map[string]interface{}) string {
 	var requestFields string
+	needsImport := false
+
+	// Check if any field uses models.<ModelName>
+	checkFieldForModel := func(field interface{}) bool {
+		if fieldStr, ok := field.(string); ok {
+			// Check if it uses a model
+			if strings.HasPrefix(fieldStr, "models.") {
+				return true
+			}
+		}
+		return false
+	}
 
 	switch v := fields.(type) {
 	case map[string]interface{}:
 		// If it's a nested object, process the fields recursively
 		for fieldName, fieldType := range v {
+			if checkFieldForModel(fieldType) {
+				needsImport = true
+			}
+
 			// Check if the field is a nested struct (object)
 			if nestedField, ok := fieldType.(map[string]interface{}); ok {
 				// Create a struct for the nested field
 				requestFields += fmt.Sprintf("\t%s %s `json:\"%s\"`\n", fieldName, fieldName, fieldName)
 				// Generate nested request
-				requestFields += generateRequestGo(fieldName, nestedField, projectName)
+				requestFields += generateRequestGo(fieldName, nestedField, projectName, models)
 			} else {
 				// Simple field (string, int, etc.)
 				requestFields += fmt.Sprintf("\t%s %s `json:\"%s\"`\n", fieldName, fieldType, fieldName)
@@ -212,27 +226,50 @@ func generateRequestGo(requestName string, fields interface{}, projectName strin
 		}
 	}
 
+	// Include import if needed
+	importStatement := ""
+	if needsImport {
+		importStatement = fmt.Sprintf("import \"%s/models\"\n", projectName)
+	}
+
 	return fmt.Sprintf(`package request
 
+%s
 type %s struct {
 %s}
-`, requestName, requestFields)
+`, importStatement, requestName, requestFields)
 }
 
 // generateResponseGo generates the Go code for responses from the JSON structure
-func generateResponseGo(responseName string, fields interface{}, projectName string) string {
+func generateResponseGo(responseName string, fields interface{}, projectName string, models map[string]map[string]interface{}) string {
 	var responseFields string
+	needsImport := false
+
+	// Check if any field uses models.<ModelName>
+	checkFieldForModel := func(field interface{}) bool {
+		if fieldStr, ok := field.(string); ok {
+			// Check if it uses a model
+			if strings.HasPrefix(fieldStr, "models.") {
+				return true
+			}
+		}
+		return false
+	}
 
 	switch v := fields.(type) {
 	case map[string]interface{}:
 		// If it's a nested object, process the fields recursively
 		for fieldName, fieldType := range v {
+			if checkFieldForModel(fieldType) {
+				needsImport = true
+			}
+
 			// Check if the field is a nested struct (object)
 			if nestedField, ok := fieldType.(map[string]interface{}); ok {
 				// Create a struct for the nested field
 				responseFields += fmt.Sprintf("\t%s %s `json:\"%s\"`\n", fieldName, fieldName, fieldName)
 				// Generate nested response
-				responseFields += generateResponseGo(fieldName, nestedField, projectName)
+				responseFields += generateResponseGo(fieldName, nestedField, projectName, models)
 			} else {
 				// Simple field (string, int, etc.)
 				responseFields += fmt.Sprintf("\t%s %s `json:\"%s\"`\n", fieldName, fieldType, fieldName)
@@ -240,13 +277,18 @@ func generateResponseGo(responseName string, fields interface{}, projectName str
 		}
 	}
 
+	// Include import if needed
+	importStatement := ""
+	if needsImport {
+		importStatement = fmt.Sprintf("import \"%s/models\"\n", projectName)
+	}
+
 	return fmt.Sprintf(`package response
 
-import "%s/models"
-
+%s
 type %s struct {
 %s}
-`, projectName, responseName, responseFields)
+`, importStatement, responseName, responseFields)
 }
 
 func init() {

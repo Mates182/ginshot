@@ -71,7 +71,7 @@ func generateProject(cmd *cobra.Command, args []string) {
 	}
 
 	// Default to port 8080 if the user doesn't provide a port
-	if regexp.MustCompile(`^[\d]{1,5}$`).FindString(config.Name) == "" {
+	if regexp.MustCompile(`^[\d]{1,5}$`).FindString(config.Port) == "" {
 		fmt.Println(Yellow + "Using default port: 8080" + Reset)
 		config.Port = "8080"
 	}
@@ -174,7 +174,13 @@ func createProjectDirectory(dir string) error {
 		return fmt.Errorf("Error creating config directory: %v", err)
 	}
 	// Create the 'data' directory
-	if err := os.MkdirAll(fmt.Sprintf("%s/data", dir), os.ModePerm); err != nil {
+	if err := os.MkdirAll(fmt.Sprintf("%s/data/requests", dir), os.ModePerm); err != nil {
+		return fmt.Errorf("Error creating data directory: %v", err)
+	}
+	if err := os.MkdirAll(fmt.Sprintf("%s/data/responses", dir), os.ModePerm); err != nil {
+		return fmt.Errorf("Error creating data directory: %v", err)
+	}
+	if err := os.MkdirAll(fmt.Sprintf("%s/models", dir), os.ModePerm); err != nil {
 		return fmt.Errorf("Error creating data directory: %v", err)
 	}
 	// Create the 'data' directory
