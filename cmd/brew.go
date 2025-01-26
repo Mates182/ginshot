@@ -12,9 +12,10 @@ import (
 
 // TemplateData structure for models, requests, and responses
 type TemplateData struct {
-	Models    map[string]map[string]interface{} `json:"models"`
-	Requests  map[string]map[string]interface{} `json:"requests"`
-	Responses map[string]map[string]interface{} `json:"responses"`
+	Models      map[string]map[string]interface{} `json:"models"`
+	Requests    map[string]map[string]interface{} `json:"requests"`
+	Responses   map[string]map[string]interface{} `json:"responses"`
+	ProjectName string                            `json:"project_name"`
 }
 
 // brewCmd represents the brew command
@@ -115,7 +116,7 @@ func generateScaffoldFromJSON(jsonPath string) {
 	if len(template.Models) > 0 {
 		for modelName, modelFields := range template.Models {
 			modelFileName := fmt.Sprintf("./models/%s.go", modelName)
-			modelFileContent := generateModelGo(modelName, modelFields)
+			modelFileContent := generateModelGo(modelName, modelFields, template.ProjectName)
 			err = os.WriteFile(modelFileName, []byte(modelFileContent), 0644)
 			if err != nil {
 				fmt.Printf("Error writing model.go: %v\n", err)
@@ -131,7 +132,7 @@ func generateScaffoldFromJSON(jsonPath string) {
 	if len(template.Requests) > 0 {
 		for requestName, requestFields := range template.Requests {
 			requestFileName := fmt.Sprintf("./data/requests/%s.go", requestName)
-			requestFileContent := generateRequestGo(requestName, requestFields)
+			requestFileContent := generateRequestGo(requestName, requestFields, template.ProjectName)
 			err = os.WriteFile(requestFileName, []byte(requestFileContent), 0644)
 			if err != nil {
 				fmt.Printf("Error writing request.go: %v\n", err)
@@ -147,7 +148,7 @@ func generateScaffoldFromJSON(jsonPath string) {
 	if len(template.Responses) > 0 {
 		for responseName, responseFields := range template.Responses {
 			responseFileName := fmt.Sprintf("./data/responses/%s.go", responseName)
-			responseFileContent := generateResponseGo(responseName, responseFields)
+			responseFileContent := generateResponseGo(responseName, responseFields, template.ProjectName)
 			err = os.WriteFile(responseFileName, []byte(responseFileContent), 0644)
 			if err != nil {
 				fmt.Printf("Error writing response.go: %v\n", err)
@@ -161,7 +162,7 @@ func generateScaffoldFromJSON(jsonPath string) {
 }
 
 // generateModelGo generates the Go code for models from the JSON structure
-func generateModelGo(modelName string, fields interface{}) string {
+func generateModelGo(modelName string, fields interface{}, projectName string) string {
 	var modelFields string
 
 	switch v := fields.(type) {
@@ -173,7 +174,7 @@ func generateModelGo(modelName string, fields interface{}) string {
 				// Create a struct for the nested field
 				modelFields += fmt.Sprintf("\t%s %s `json:\"%s\"`\n", fieldName, fieldName, fieldName)
 				// Generate nested model
-				modelFields += generateModelGo(fieldName, nestedField)
+				modelFields += generateModelGo(fieldName, nestedField, projectName)
 			} else {
 				// Simple field (string, int, etc.)
 				modelFields += fmt.Sprintf("\t%s %s `json:\"%s\"`\n", fieldName, fieldType, fieldName)
@@ -183,13 +184,15 @@ func generateModelGo(modelName string, fields interface{}) string {
 
 	return fmt.Sprintf(`package models
 
+import "%s/models"
+
 type %s struct {
 %s}
-`, modelName, modelFields)
+`, projectName, modelName, modelFields)
 }
 
 // generateRequestGo generates the Go code for requests from the JSON structure
-func generateRequestGo(requestName string, fields interface{}) string {
+func generateRequestGo(requestName string, fields interface{}, projectName string) string {
 	var requestFields string
 
 	switch v := fields.(type) {
@@ -201,7 +204,7 @@ func generateRequestGo(requestName string, fields interface{}) string {
 				// Create a struct for the nested field
 				requestFields += fmt.Sprintf("\t%s %s `json:\"%s\"`\n", fieldName, fieldName, fieldName)
 				// Generate nested request
-				requestFields += generateRequestGo(fieldName, nestedField)
+				requestFields += generateRequestGo(fieldName, nestedField, projectName)
 			} else {
 				// Simple field (string, int, etc.)
 				requestFields += fmt.Sprintf("\t%s %s `json:\"%s\"`\n", fieldName, fieldType, fieldName)
@@ -217,7 +220,7 @@ type %s struct {
 }
 
 // generateResponseGo generates the Go code for responses from the JSON structure
-func generateResponseGo(responseName string, fields interface{}) string {
+func generateResponseGo(responseName string, fields interface{}, projectName string) string {
 	var responseFields string
 
 	switch v := fields.(type) {
@@ -229,7 +232,7 @@ func generateResponseGo(responseName string, fields interface{}) string {
 				// Create a struct for the nested field
 				responseFields += fmt.Sprintf("\t%s %s `json:\"%s\"`\n", fieldName, fieldName, fieldName)
 				// Generate nested response
-				responseFields += generateResponseGo(fieldName, nestedField)
+				responseFields += generateResponseGo(fieldName, nestedField, projectName)
 			} else {
 				// Simple field (string, int, etc.)
 				responseFields += fmt.Sprintf("\t%s %s `json:\"%s\"`\n", fieldName, fieldType, fieldName)
@@ -239,9 +242,11 @@ func generateResponseGo(responseName string, fields interface{}) string {
 
 	return fmt.Sprintf(`package response
 
+import "%s/models"
+
 type %s struct {
 %s}
-`, responseName, responseFields)
+`, projectName, responseName, responseFields)
 }
 
 func init() {

@@ -152,7 +152,7 @@ func generateProjectFiles(config *InitConfig) error {
 	}
 
 	// Create Brewer Template
-	if err := createBrewerTemplateJSON(dir); err != nil {
+	if err := createBrewerTemplateJSON(dir, config); err != nil {
 		fmt.Println(err)
 		return err
 	}
@@ -524,8 +524,9 @@ func createGinshotJSON(dir string, config *InitConfig) error {
 	return nil
 }
 
-func createBrewerTemplateJSON(dir string) error {
+func createBrewerTemplateJSON(dir string, config *InitConfig) error {
 	dataJSONContent := `{
+	"project_name": "` + config.Name + `",
 	"models": {
 		"Ping": {
 			"Message": "string",
@@ -543,9 +544,17 @@ func createBrewerTemplateJSON(dir string) error {
 		"PingRequestData": {
 			"Message": "string"
 		}
+	},
+	"responses": {
+		"PingResponse": {
+			"Data": "PingResponseData",
+			"Message": "string"
+		},
+		"PingResponseData": {
+			"Ping": "models.Ping"
+		}
 	}
-}
-  `
+}`
 
 	if err := os.WriteFile(dir+"/brewer/template.json", []byte(dataJSONContent), 0644); err != nil {
 		return fmt.Errorf("Error creating template.json: %v", err)
