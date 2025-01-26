@@ -526,8 +526,26 @@ func createGinshotJSON(dir string, config *InitConfig) error {
 
 func createBrewerTemplateJSON(dir string) error {
 	dataJSONContent := `{
-	"todo": "implement brewer"
-}`
+	"models": {
+		"Ping": {
+			"Message": "string",
+			"Greeting": "Greeting"
+		},
+		"Greeting": {
+			"Hello": "string"
+		}
+	},
+	"requests": {
+		"PingRequest": {
+			"Data": "PingRequestData",
+			"Message": "string"
+		},
+		"PingRequestData": {
+			"Message": "string"
+		}
+	}
+}
+  `
 
 	if err := os.WriteFile(dir+"/brewer/template.json", []byte(dataJSONContent), 0644); err != nil {
 		return fmt.Errorf("Error creating template.json: %v", err)
