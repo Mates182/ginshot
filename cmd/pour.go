@@ -100,6 +100,8 @@ func createDBFiles(db, name string) {
 
 	addDatabaseToDockerCompose(db, name)
 
+	addDBConfig(db, name)
+
 	// Clean up Go modules
 	if err := runGoModTidy("."); err != nil {
 		fmt.Println(err)
@@ -410,7 +412,9 @@ func addDatabaseToDockerCompose(dbType, name string) {
 	// Define the MongoDB and Redis service templates
 	mongoService := `
   ` + name + `-db:
-    image: mongo:latest
+    build:
+      context: ./config/` + name + `
+      dockerfile: Dockerfile
     container_name: ` + name + `-db
     environment:
       MONGO_INITDB_ROOT_USERNAME: user
@@ -470,6 +474,10 @@ func addDatabaseToDockerCompose(dbType, name string) {
 		return
 	}
 
+	// Add depends_on after restart: unless-stopped
+	dependsOnLine := "\n    depends_on:\n      - " + name + "-db"
+	content = strings.Replace(content, "restart: unless-stopped", "restart: unless-stopped"+dependsOnLine, 1)
+
 	// Write the updated content back to the docker-compose.yml file
 	err = os.WriteFile(filePath, []byte(content), 0644)
 	if err != nil {
@@ -481,8 +489,62 @@ func addDatabaseToDockerCompose(dbType, name string) {
 	fmt.Println("docker-compose.yml updated successfully.")
 }
 
-func main() {
-	// Example usage: pass the database type and name as parameters
-	// You can change "mongo" to "redis" or get it dynamically from a user input or flag
-	addDatabaseToDockerCompose("mongo", "test")
+func addDBConfig(db string, name string) {
+	if db == "mongo" {
+		dirPath := "config/" + name
+		err := os.MkdirAll(dirPath, 0755)
+		if err != nil {
+			fmt.Println("Error creating config directory:", err)
+			return
+		}
+		var collection_name string
+		fmt.Print("Enter a collection name: ")
+		fmt.Scanln(&collection_name)
+
+		initDBScript := `#!/bin/bash
+mongoimport --host localhost --db ` + name + ` --collection ` + collection_name + ` --file /data/backup.json --jsonArray
+echo "Database initialized successfully"`
+
+		backupData := `[{
+	"Message": "Pong",
+	"Greeting": {
+		"Hello": "Hello World"
+	}
+}]`
+		dockerfile := `FROM mongo:latest
+
+WORKDIR /data
+
+COPY backup.json /data/backup.json
+
+COPY init-db.sh /docker-entrypoint-initdb.d/init-db.sh
+
+RUN chmod +x /docker-entrypoint-initdb.d/init-db.sh
+
+EXPOSE 27017`
+
+		// init-db.sh
+		err = os.WriteFile(dirPath+"/init-db.sh", []byte(initDBScript), 0755)
+		if err != nil {
+			fmt.Println("Error creating init-db.sh:", err)
+			return
+		}
+
+		// backup.json
+		err = os.WriteFile(dirPath+"/backup.json", []byte(backupData), 0644)
+		if err != nil {
+			fmt.Println("Error creating backup.json:", err)
+			return
+		}
+		// dockerfile
+		err = os.WriteFile(dirPath+"/Dockerfile", []byte(dockerfile), 0644)
+		if err != nil {
+			fmt.Println("Error creating Dockerfile", err)
+			return
+		}
+
+		fmt.Println("MongoDB configuration files created successfully.")
+	} else {
+		fmt.Println("No additional files required for the selected database.")
+	}
 }

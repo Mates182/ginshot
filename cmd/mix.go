@@ -187,7 +187,7 @@ func New{{.ServiceName}}ServiceImpl(` + func() string {
 		// Add Components
 		` + func() string {
 		if dbName != "" {
-			return "DBClient: dbClient"
+			return "DBClient: dbClient,"
 		}
 		return ""
 	}() + `
