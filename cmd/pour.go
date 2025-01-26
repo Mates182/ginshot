@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"text/template"
 
 	"github.com/spf13/cobra"
@@ -96,6 +97,8 @@ func createDBFiles(db, name string) {
 	generateSecretsFile(db, name) // Pass the name to the function
 
 	generateEnvFile(db, name)
+
+	addDatabaseToDockerCompose(db, name)
 
 	// Clean up Go modules
 	if err := runGoModTidy("."); err != nil {
@@ -389,4 +392,97 @@ func generateEnvFile(db, name string) {
 	}
 
 	fmt.Println("Successfully updated .env file with " + name + " configuration")
+}
+
+// addDatabaseToDockerCompose adds MongoDB or Redis service to the docker-compose.yml based on the provided database type
+func addDatabaseToDockerCompose(dbType, name string) {
+	// Read the docker-compose.yml file
+	filePath := "./docker-compose.yml"
+	fileContent, err := os.ReadFile(filePath)
+	if err != nil {
+		fmt.Println("Error reading docker-compose.yml:", err)
+		return
+	}
+
+	// Convert the file content to a string
+	content := string(fileContent)
+
+	// Define the MongoDB and Redis service templates
+	mongoService := `
+  ` + name + `-db:
+    image: mongo:latest
+    container_name: ` + name + `-db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: user
+      MONGO_INITDB_ROOT_PASSWORD: password
+    ports:
+      - "27017:27017"
+    networks:
+      - app-network
+`
+
+	redisService := `
+  ` + name + `-db:
+    image: redis:7.0-alpine
+    container_name: ` + name + `-db
+    ports:
+      - "6379:6379"
+    networks:
+      - app-network
+    environment:
+      - REDIS_PASSWORD=password
+`
+
+	// Define environment variables for the application
+	mongoEnv := `
+      - ` + name + `_URI=mongodb://user:password@` + name + `-db:27017`
+
+	redisEnv := `
+      - ` + name + `_URI=` + name + `-db:6379
+      - ` + name + `_PASSWORD=password`
+
+	// Find the position of the "services:" line and add the service just below it
+	servicesPosition := strings.Index(content, "services:")
+	if servicesPosition == -1 {
+		fmt.Println("Error: 'services:' section not found in docker-compose.yml.")
+		return
+	}
+
+	// Add the corresponding service after the "services:" section
+	if dbType == "mongo" {
+		if !strings.Contains(content, name+"-db") {
+			content = content[:servicesPosition+len("services:")] + mongoService + content[servicesPosition+len("services:"):]
+			content = strings.Replace(content, "- GIN_MODE=release", "- GIN_MODE=release"+mongoEnv, 1)
+			fmt.Println("MongoDB service added to docker-compose.yml.")
+		} else {
+			fmt.Println("MongoDB service already exists in docker-compose.yml.")
+		}
+	} else if dbType == "redis" {
+		if !strings.Contains(content, name+"-db") {
+			content = content[:servicesPosition+len("services:")] + redisService + content[servicesPosition+len("services:"):]
+			content = strings.Replace(content, "- GIN_MODE=release", "- GIN_MODE=release"+redisEnv, 1)
+			fmt.Println("Redis service added to docker-compose.yml.")
+		} else {
+			fmt.Println("Redis service already exists in docker-compose.yml.")
+		}
+	} else {
+		fmt.Println("Unsupported database type. Please choose either 'mongo' or 'redis'.")
+		return
+	}
+
+	// Write the updated content back to the docker-compose.yml file
+	err = os.WriteFile(filePath, []byte(content), 0644)
+	if err != nil {
+		fmt.Println("Error writing to docker-compose.yml:", err)
+		return
+	}
+
+	// Indicate success
+	fmt.Println("docker-compose.yml updated successfully.")
+}
+
+func main() {
+	// Example usage: pass the database type and name as parameters
+	// You can change "mongo" to "redis" or get it dynamically from a user input or flag
+	addDatabaseToDockerCompose("mongo", "test")
 }
