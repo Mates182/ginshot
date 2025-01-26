@@ -71,7 +71,7 @@ func generateProject(cmd *cobra.Command, args []string) {
 	}
 
 	// Default to port 8080 if the user doesn't provide a port
-	if regexp.MustCompile(`^[\d]{1,5}$`).FindString(config.Name) == "" {
+	if regexp.MustCompile(`^[\d]{1,5}$`).FindString(config.Port) == "" {
 		fmt.Println(Yellow + "Using default port: 8080" + Reset)
 		config.Port = "8080"
 	}
@@ -152,7 +152,7 @@ func generateProjectFiles(config *InitConfig) error {
 	}
 
 	// Create Brewer Template
-	if err := createBrewerTemplateJSON(dir); err != nil {
+	if err := createBrewerTemplateJSON(dir, config); err != nil {
 		fmt.Println(err)
 		return err
 	}
@@ -174,7 +174,13 @@ func createProjectDirectory(dir string) error {
 		return fmt.Errorf("Error creating config directory: %v", err)
 	}
 	// Create the 'data' directory
-	if err := os.MkdirAll(fmt.Sprintf("%s/data", dir), os.ModePerm); err != nil {
+	if err := os.MkdirAll(fmt.Sprintf("%s/data/requests", dir), os.ModePerm); err != nil {
+		return fmt.Errorf("Error creating data directory: %v", err)
+	}
+	if err := os.MkdirAll(fmt.Sprintf("%s/data/responses", dir), os.ModePerm); err != nil {
+		return fmt.Errorf("Error creating data directory: %v", err)
+	}
+	if err := os.MkdirAll(fmt.Sprintf("%s/models", dir), os.ModePerm); err != nil {
 		return fmt.Errorf("Error creating data directory: %v", err)
 	}
 	// Create the 'data' directory
@@ -524,9 +530,36 @@ func createGinshotJSON(dir string, config *InitConfig) error {
 	return nil
 }
 
-func createBrewerTemplateJSON(dir string) error {
+func createBrewerTemplateJSON(dir string, config *InitConfig) error {
 	dataJSONContent := `{
-	"todo": "implement brewer"
+	"project_name": "` + config.Name + `",
+	"models": {
+		"Ping": {
+			"Message": "string",
+			"Greeting": "Greeting"
+		},
+		"Greeting": {
+			"Hello": "string"
+		}
+	},
+	"requests": {
+		"PingRequest": {
+			"Data": "PingRequestData",
+			"Message": "string"
+		},
+		"PingRequestData": {
+			"Message": "string"
+		}
+	},
+	"responses": {
+		"PingResponse": {
+			"Data": "PingResponseData",
+			"Message": "string"
+		},
+		"PingResponseData": {
+			"Ping": "models.Ping"
+		}
+	}
 }`
 
 	if err := os.WriteFile(dir+"/brewer/template.json", []byte(dataJSONContent), 0644); err != nil {
