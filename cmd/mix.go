@@ -37,7 +37,7 @@ var mixCmd = &cobra.Command{
 	Short: "Generate controller, service, and route files",
 	Long:  "This command generates files and updates the router based on user inputs and project configuration.",
 	Run: func(cmd *cobra.Command, args []string) {
-		var serviceName, routeName, routeType, requestType, responseType string
+		var serviceName, routeName, routeType, requestType, responseType, dbType string
 		projectName := getProjectName()
 
 		fmt.Print("Enter the service name: ")
@@ -55,10 +55,13 @@ var mixCmd = &cobra.Command{
 		fmt.Print("Enter the response type (e.g., PingResponse): ")
 		fmt.Scanln(&responseType)
 
+		fmt.Print("Enter database type (e.g., mongo, redis, or neither): ")
+		fmt.Scanln(&dbType)
+
 		generateController(projectName, serviceName, requestType, responseType)
 		generateService(projectName, serviceName, requestType, responseType)
-		generateServiceImpl(projectName, serviceName, requestType, responseType)
-		updateRouter(projectName, routeName, routeType, serviceName)
+		generateServiceImpl(projectName, serviceName, requestType, responseType, dbType)
+		updateRouter(projectName, routeName, routeType, serviceName, dbType)
 
 		fmt.Println("Files generated and router updated successfully.")
 	},
@@ -138,7 +141,14 @@ type {{.ServiceName}}Service interface {
 	})
 }
 
-func generateServiceImpl(projectName, serviceName, requestType, responseType string) {
+func generateServiceImpl(projectName, serviceName, requestType, responseType string, db ...string) {
+	// Set default value if includeBson is not provided
+	dbName := ""
+	if len(db) > 0 {
+		dbName = db[0]
+
+	}
+
 	serviceImplTemplate := `// auto-generated with ginshot
 package service
 
@@ -146,14 +156,41 @@ import (
 	requests "{{.ProjectName}}/data/requests"
 	responses "{{.ProjectName}}/data/responses"
 	"net/http"
+	` + func() string {
+		if dbName != "" {
+			if dbName == "mongo" {
+				return `"go.mongodb.org/mongo-driver/mongo"`
+			} else if dbName == "redis" {
+				return `"github.com/go-redis/redis/v8"`
+			}
+		}
+		return ""
+	}() + `
 )
 type {{.ServiceName}}ServiceImpl struct {
 	// Add Components
+	` + func() string {
+		if dbName != "" {
+			return "DBClient *" + dbName + ".Client"
+		}
+		return ""
+	}() + `
 }
 
-func New{{.ServiceName}}ServiceImpl() {{.ServiceName}}Service {
+func New{{.ServiceName}}ServiceImpl(` + func() string {
+		if dbName != "" {
+			return "dbClient *" + dbName + ".Client"
+		}
+		return ""
+	}() + `) {{.ServiceName}}Service {
 	return &{{.ServiceName}}ServiceImpl{
 		// Add Components
+		` + func() string {
+		if dbName != "" {
+			return "DBClient: dbClient"
+		}
+		return ""
+	}() + `
 	}
 }
 
@@ -176,7 +213,12 @@ func (service *{{.ServiceName}}ServiceImpl) {{.ServiceName}}Handler(request requ
 	})
 }
 
-func updateRouter(projectName, routeName, routeType, serviceName string) {
+func updateRouter(projectName, routeName, routeType, serviceName string, db ...string) {
+	dbName := ""
+	if len(db) > 0 {
+		fmt.Print("Enter database Name: ")
+		fmt.Scanln(&dbName)
+	}
 	routerFileName := "./router/router.go"
 	file, _ := os.OpenFile(routerFileName, os.O_RDWR, 0644)
 	defer file.Close()
@@ -186,7 +228,12 @@ func updateRouter(projectName, routeName, routeType, serviceName string) {
 
 	insertPoint := "//[ginshot-routes]"
 	insertCode := fmt.Sprintf(
-		"\n\trouter.%s(\"%s\", controller.New%sController(service.New%sServiceImpl()).%s)",
+		"\n\trouter.%s(\"%s\", controller.New%sController(service.New%sServiceImpl("+func() string {
+			if dbName != "" {
+				return "dbcontext.GetDBClient()"
+			}
+			return ""
+		}()+")).%s)",
 		strings.ToUpper(routeType), routeName, serviceName, serviceName, serviceName,
 	)
 
@@ -196,6 +243,7 @@ func updateRouter(projectName, routeName, routeType, serviceName string) {
 		// Import statements for both controller and service
 		importController := "\n\t\"" + projectName + "/controller\""
 		importService := "\n\t\"" + projectName + "/service\""
+		importDbContext := "\n\t\"" + projectName + "/dbcontext/" + dbName + "\""
 
 		importInsertPoint := "import ("
 		if !strings.Contains(newContent, importController) {
@@ -203,6 +251,9 @@ func updateRouter(projectName, routeName, routeType, serviceName string) {
 		}
 		if !strings.Contains(newContent, importService) {
 			newContent = strings.Replace(newContent, importInsertPoint, importInsertPoint+importService, 1)
+		}
+		if dbName != "" {
+			newContent = strings.Replace(newContent, importInsertPoint, importInsertPoint+importDbContext, 1)
 		}
 
 		os.WriteFile(routerFileName, []byte(newContent), 0644)
