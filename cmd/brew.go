@@ -114,9 +114,16 @@ func generateScaffoldFromJSON(jsonPath string) {
 
 	// Generate models if they exist
 	if len(template.Models) > 0 {
+		var useBson string
+		fmt.Print("Include bson? (y/n): ")
+		fmt.Scanln(&useBson)
+		includeBson := true
+		if strings.ToLower(useBson) != "y" {
+			fmt.Println("Using bson")
+		}
 		for modelName, modelFields := range template.Models {
 			modelFileName := fmt.Sprintf("./models/%s.go", modelName)
-			modelFileContent := generateModelGo(modelName, modelFields, template.ProjectName)
+			modelFileContent := generateModelGo(modelName, modelFields, template.ProjectName, includeBson)
 			err = os.WriteFile(modelFileName, []byte(modelFileContent), 0644)
 			if err != nil {
 				fmt.Printf("Error writing model.go: %v\n", err)
@@ -162,8 +169,14 @@ func generateScaffoldFromJSON(jsonPath string) {
 }
 
 // generateModelGo generates the Go code for models from the JSON structure
-func generateModelGo(modelName string, fields interface{}, projectName string) string {
+func generateModelGo(modelName string, fields interface{}, projectName string, includeBson ...bool) string {
 	var modelFields string
+
+	// Set default value if includeBson is not provided
+	useBson := false
+	if len(includeBson) > 0 {
+		useBson = includeBson[0]
+	}
 
 	switch v := fields.(type) {
 	case map[string]interface{}:
@@ -172,12 +185,18 @@ func generateModelGo(modelName string, fields interface{}, projectName string) s
 			// Check if the field is a nested struct (object)
 			if nestedField, ok := fieldType.(map[string]interface{}); ok {
 				// Create a struct for the nested field
-				modelFields += fmt.Sprintf("\t%s %s `json:\"%s\"`\n", fieldName, fieldName, fieldName)
-				// Generate nested model
-				modelFields += generateModelGo(fieldName, nestedField, projectName)
+				tags := fmt.Sprintf("`json:\"%s\"`", fieldName)
+				if useBson {
+					tags = fmt.Sprintf("`json:\"%s\" bson:\"%s\"`", fieldName, fieldName)
+				}
+				modelFields += fmt.Sprintf("\t%s struct {\n%s\t} %s\n", fieldName, generateModelGo(fieldName, nestedField, projectName, useBson), tags)
 			} else {
 				// Simple field (string, int, etc.)
-				modelFields += fmt.Sprintf("\t%s %s `json:\"%s\"`\n", fieldName, fieldType, fieldName)
+				tags := fmt.Sprintf("`json:\"%s\"`", fieldName)
+				if useBson {
+					tags = fmt.Sprintf("`json:\"%s\" bson:\"%s\"`", fieldName, fieldName)
+				}
+				modelFields += fmt.Sprintf("\t%s %s %s\n", fieldName, fieldType, tags)
 			}
 		}
 	}
