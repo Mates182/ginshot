@@ -187,6 +187,12 @@ func createProjectDirectory(dir string) error {
 	if err := os.MkdirAll(fmt.Sprintf("%s/brewer", dir), os.ModePerm); err != nil {
 		return fmt.Errorf("Error creating data directory: %v", err)
 	}
+	if err := os.MkdirAll(fmt.Sprintf("%s/controller", dir), os.ModePerm); err != nil {
+		return fmt.Errorf("Error creating data directory: %v", err)
+	}
+	if err := os.MkdirAll(fmt.Sprintf("%s/service", dir), os.ModePerm); err != nil {
+		return fmt.Errorf("Error creating data directory: %v", err)
+	}
 	return nil
 
 }
@@ -225,16 +231,17 @@ import (
 )
 
 func SetupRouter() *gin.Engine {
-	r := gin.Default()
-	r.Use(cors.GetCORSConfig())
+	router := gin.Default()
+	router.Use(cors.GetCORSConfig())
+	//[ginshot-routes]
 	// [HttpGET] Ping to %s API
-	r.GET("/ping", func(c *gin.Context) {
+	router.GET("/ping", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"message": "pong",
 		})
 	})
 
-	return r
+	return router
 }
 	`, name)
 
@@ -515,8 +522,8 @@ Thumbs.db
 
 func createGinshotJSON(dir string, config *InitConfig) error {
 	ginshotJSONContent := `{
-	"project_name": "a",
-	"port": "8080",
+	"project_name": "` + config.Name + `",
+	"port": "` + config.Port + `",
 	"cors": true,
 	"dockerfile": true,
 	"docker_compose": true,
