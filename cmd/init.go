@@ -76,38 +76,13 @@ func generateProject(cmd *cobra.Command, args []string) {
 		config.Port = "8080"
 	}
 
-	// Create the project structure
-	dir := fmt.Sprintf("./%s", config.Name)
-	if err := createProjectDirectory(dir); err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	// Create the necessary files
-	if err := createMainFile(dir, config.Name, config.Port); err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	if err := createRouterFile(dir, config.Name); err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	// Set up the Go module
-	if err := createGoMod(dir, config.Name); err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	// Clean up Go modules
-	if err := runGoModTidy(dir); err != nil {
+	if err := generateProjectFiles(config); err != nil {
 		fmt.Println(err)
 		return
 	}
 
 	// Successfully created the microservice
-	fmt.Println(Bold + "Project '" + Cyan + config.Name + White + "' created " + Green + "successfully" + White + " in '" + Bold + Cyan + dir + White + "' on port " + Bold + Cyan + config.Port + Reset)
+	fmt.Println(Bold + "Project '" + Cyan + config.Name + White + "' created " + Green + "successfully" + White + " in '" + Bold + Cyan + "./" + config.Name + White + "' on port " + Bold + Cyan + config.Port + Reset)
 	// printProjectInstructions prints instructions for running the project
 
 	fmt.Println(Bold + "\nTo run your project:" + Reset)
@@ -115,6 +90,68 @@ func generateProject(cmd *cobra.Command, args []string) {
 	fmt.Println("  go run main.go" + Reset)
 	fmt.Println(Bold + "\nTest the API:" + Reset)
 	fmt.Printf(Grey+"  curl http://localhost:%s/ping\n"+Reset, config.Port)
+}
+
+func generateProjectFiles(config *InitConfig) error {
+	// Create the project structure
+	dir := fmt.Sprintf("./%s", config.Name)
+	if err := createProjectDirectory(dir); err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+	// Create the necessary files
+	if err := createMainFile(dir, config.Name, config.Port); err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+	if err := createRouterFile(dir, config.Name); err != nil {
+		fmt.Println(err)
+		return err
+	}
+	if err := createCorsFile(dir); err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+	if err := createDockerfile(dir); err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+	if err := createDockerCompose(dir, config); err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+	if err := createGitIgnore(dir); err != nil {
+		fmt.Println(err)
+		return err
+	}
+	if err := createGinshotJSON(dir, config); err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+	// Set up the Go module
+	if err := createGoMod(dir, config.Name); err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+	// Clean up Go modules
+	if err := runGoModTidy(dir); err != nil {
+		fmt.Println(err)
+		return err
+	}
+	// Create Readme File
+	if err := createReadmeFile(dir, config.Name, config.Port); err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+	return nil
 }
 
 // createProjectDirectory creates the project directory
@@ -126,7 +163,12 @@ func createProjectDirectory(dir string) error {
 	if err := os.MkdirAll(fmt.Sprintf("%s/router", dir), os.ModePerm); err != nil {
 		return fmt.Errorf("Error creating router directory: %v", err)
 	}
+	// Create the 'config' directory
+	if err := os.MkdirAll(fmt.Sprintf("%s/config", dir), os.ModePerm); err != nil {
+		return fmt.Errorf("Error creating config directory: %v", err)
+	}
 	return nil
+
 }
 
 // createMainFile creates the main.go file
@@ -159,11 +201,12 @@ package router
 
 import (
 	"github.com/gin-gonic/gin"
+	"`+name+`/config/cors"
 )
 
 func SetupRouter() *gin.Engine {
 	r := gin.Default()
-
+	r.Use(cors.GetCORSConfig())
 	// [HttpGET] Ping to %s API
 	r.GET("/ping", func(c *gin.Context) {
 		c.JSON(200, gin.H{
@@ -198,5 +241,262 @@ func runGoModTidy(dir string) error {
 	if err := cmdGoModTidy.Run(); err != nil {
 		return fmt.Errorf("Error running go mod tidy: %v", err)
 	}
+	return nil
+}
+
+// createReadmeFile creates a README.md file with project documentation
+func createReadmeFile(dir, name, port string) error {
+	readmeContent := fmt.Sprintf(`# %s
+
+A Gin-based microservice created with ginshot.
+
+## Getting Started
+
+These instructions will help you run the project on your local machine.
+
+### Prerequisites
+
+- Go 1.16 or higher
+
+### Running the service
+
+1. Start the server:
+   `+"```"+`bash
+   go run main.go
+   `+"```"+`
+   `+"```"+`bash
+   curl http://localhost:%s/ping
+   `+"```"+`
+
+## API Endpoints
+
+- GET /ping - Health check endpoint that returns "pong"
+
+## Built With
+
+- [Gin](https://github.com/gin-gonic/gin) - Web framework
+- [ginshot](https://github.com/yourusername/ginshot) - Project scaffolding tool
+
+`, name, port)
+
+	if err := os.WriteFile(dir+"/README.md", []byte(readmeContent), 0644); err != nil {
+		return fmt.Errorf("Error creating README.md: %v", err)
+	}
+	return nil
+}
+
+// createCorsFile creates the cors.go file with CORS configuration
+func createCorsFile(dir string) error {
+	corsFile := `// auto-generated by ginshot
+package cors
+
+import (
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
+)
+
+func GetCORSConfig() gin.HandlerFunc {
+	corsConfig := cors.New(cors.Config{
+		// Set to true to allow all origins (remove if you want to allow specific origins only)
+		AllowAllOrigins: true, 
+
+		// Uncomment and modify the line below to allow specific origins instead of all
+		// AllowOrigins: []string{"http://localhost:80", "https://example.com"}, 
+
+		// Define allowed HTTP methods (adjust according to your API needs)
+		AllowMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},
+
+		// Specify the allowed headers (remove or add headers as required by your application)
+		AllowHeaders: []string{"Origin", "Content-Length", "Content-Type", "Authorization"},
+
+		// Set to true to allow credentials such as cookies or authorization headers
+		AllowCredentials: true,
+	})
+
+	return corsConfig
+}
+
+`
+	if err := os.MkdirAll(fmt.Sprintf("%s/config/cors", dir), os.ModePerm); err != nil {
+		return fmt.Errorf("Error creating config/cors directory: %v", err)
+	}
+
+	if err := os.WriteFile(dir+"/config/cors/cors.go", []byte(corsFile), 0644); err != nil {
+		return fmt.Errorf("Error creating cors.go: %v", err)
+	}
+	return nil
+}
+
+// createDockerfile creates a Dockerfile for the project
+func createDockerfile(dir string) error {
+	dockerfileContent := `# auto-generated by ginshot
+# change the version if needed
+FROM golang:alpine AS builder
+
+WORKDIR /app
+
+COPY go.mod go.sum ./
+
+RUN go mod tidy
+
+COPY . .
+
+RUN go build -o main main.go
+
+FROM alpine:latest
+
+RUN apk --no-cache add ca-certificates
+
+WORKDIR /root/
+
+COPY --from=builder /app/main .
+
+EXPOSE 80
+
+CMD ["./main"]
+`
+
+	if err := os.WriteFile(dir+"/Dockerfile", []byte(dockerfileContent), 0644); err != nil {
+		return fmt.Errorf("Error creating Dockerfile: %v", err)
+	}
+
+	dockerignoreContent := `# auto-generated by ginshot
+# Binaries and build artifacts
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Dependencies
+vendor/
+
+# Git
+.git
+.gitignore
+
+# Logs
+*.log
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Secrets
+.env
+.env.local
+.env.*.local
+`
+
+	if err := os.WriteFile(dir+"/.dockerignore", []byte(dockerignoreContent), 0644); err != nil {
+		return fmt.Errorf("Error creating .dockerignore: %v", err)
+	}
+
+	return nil
+}
+
+// createDockerCompose creates a docker-compose.yml file for the project
+func createDockerCompose(dir string, config *InitConfig) error {
+	dockerComposeContent := `# auto-generated by ginshot
+# Uncomment if needed
+# version: '3.8'
+
+services:
+  ` + config.Name + `:
+    build: .
+    ports:
+      - "` + config.Port + `:` + config.Port + `"
+    container_name: ` + config.Name + `
+    environment:
+      - GIN_MODE=release
+    volumes:
+      - .:/app
+    networks:
+      - app-network
+    restart: unless-stopped
+
+networks:
+  app-network:
+    driver: bridge`
+
+	if err := os.WriteFile(dir+"/docker-compose.yml", []byte(dockerComposeContent), 0644); err != nil {
+		return fmt.Errorf("Error creating docker-compose.yml: %v", err)
+	}
+
+	return nil
+}
+
+func createGitIgnore(dir string) error {
+	gitignoreContent := `# auto-generated by ginshot
+# Binaries and build artifacts
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Dependencies
+vendor/
+
+# Logs
+*.log
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Secrets
+.env
+.env.local
+.env.*.local
+`
+
+	if err := os.WriteFile(dir+"/.gitignore", []byte(gitignoreContent), 0644); err != nil {
+		return fmt.Errorf("Error creating .gitignore: %v", err)
+	}
+
+	return nil
+}
+
+func createGinshotJSON(dir string, config *InitConfig) error {
+	ginshotJSONContent := `{
+	"project_name": "a",
+	"port": "8080",
+	"cors": true,
+	"dockerfile": true,
+	"docker_compose": true,
+	"gitignore": true
+}`
+
+	if err := os.WriteFile(dir+"/ginshot.json", []byte(ginshotJSONContent), 0644); err != nil {
+		return fmt.Errorf("Error creating ginshot.json: %v", err)
+	}
+
 	return nil
 }
