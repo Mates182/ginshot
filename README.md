@@ -30,6 +30,7 @@ go build -o ginshot .
 
 ---
 
+
 ## 📖 Usage
 
 Run the following command to see available options:
@@ -57,26 +58,7 @@ ginshot init my-project -p 8080
 
 ---
 
-#### 2. 🏃‍♂️ `serve` - Build and run the project using Docker Compose
-
-```bash
-ginshot serve
-```
-
-**Description:**  
-Builds and runs the project using `docker-compose up --build -d`.  
-Ensures that all services defined in the `docker-compose.yml` file are running.
-Docker must be running to run the command.
-
-**Example:**
-
-```bash
-ginshot serve
-```
-
----
-
-#### 3. 🏗 `brew` - Generate scaffold files from templates or JSON
+#### 2. 🍺 `brew` - Generate scaffold files from templates or JSON
 
 ```bash
 ginshot brew [filename]
@@ -90,6 +72,29 @@ If no filename is specified, it lists available template files and prompts the u
 
 ```bash
 ginshot brew template.json
+```
+
+---
+
+#### 3. 🏗 `pour` - Generate files for the selected database (Redis or MongoDB) and a custom name
+
+```bash
+ginshot pour --db [database] --name [name]
+```
+
+**Description:**  
+This command generates the necessary files for your project  
+to integrate with the specified database, such as Redis or MongoDB,  
+and applies a custom name to the generated files.
+
+**Parameters:**
+- `database` - The type of database (`mongo` or `redis`).
+- `name` - The custom name to use for the generated files.
+
+**Example:**
+
+```bash
+ginshot pour mongo userdb
 ```
 
 ---
@@ -111,24 +116,26 @@ ginshot mix
 
 ---
 
-#### 5. 🐚 `completion` - Shell autocompletion script
+#### 5. 🏃‍♂️ `serve` - Build and run the project using Docker Compose
 
 ```bash
-ginshot completion [shell]
+ginshot serve
 ```
 
 **Description:**  
-Generates shell completion scripts for `bash`, `zsh`, `fish`, and `powershell`.
+Builds and runs the project using `docker-compose up --build -d`.  
+Ensures that all services defined in the `docker-compose.yml` file are running.  
+Docker must be running to run the command.
 
 **Example:**
 
 ```bash
-ginshot completion bash
+ginshot serve
 ```
 
 ---
 
-#### 5. ℹ️ `help` - Display help information
+#### 6. ℹ️ `help` - Display help information
 
 ```bash
 ginshot help
