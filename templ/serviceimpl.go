@@ -13,22 +13,16 @@ func GetServiceImplTemplate(config *models.ProjectConfig, dbName string, service
 	switch crudType {
 	case 1:
 		logic = GetCreateLogicTemplate(config, model, id)
-		break
 	case 2:
 		logic = GetReadLogicTemplate(config, model, id)
-		break
 	case 3:
 		logic = GetUpdateLogicTemplate(config, model, id)
-		break
 	case 4:
 		logic = GetDeleteLogicTemplate(config, model, id)
-		break
 	case 5:
 		logic = GetListLogicTemplate(config, model, id)
-		break
 	default:
 		logic = fmt.Sprintf("response := responses.%sResponse{}", proyectName)
-		break
 	}
 
 	return fmt.Sprintf(`package service
@@ -40,7 +34,10 @@ import (
 	`+func() string {
 		if dbName != "" {
 			if dbName == "mongo" {
-				return `"go.mongodb.org/mongo-driver/mongo"`
+				return `"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/bson"
+	"create-product/models"
+	"context"`
 			} else if dbName == "redis" {
 				return `"github.com/go-redis/redis/v8"`
 			}
