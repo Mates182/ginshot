@@ -9,6 +9,7 @@ import (
 
 	"github.com/mates182/ginshot/models"
 	templates "github.com/mates182/ginshot/templ"
+	"github.com/mates182/ginshot/writer"
 	"github.com/spf13/cobra"
 )
 
@@ -169,61 +170,64 @@ func generateProjectFiles(config *models.ProjectConfig) error {
 	return nil
 }
 
-// createProjectDirectory creates the project directory
+// createProjectDirectory creates the project directory and necessary subdirectories
 func createProjectDirectory(dir string) error {
-	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
-		return fmt.Errorf("error creating project directory: %v", err)
+	// Create the main project directory
+	if err := writer.CreateDir(dir); err != nil {
+		return err
 	}
-	// Create the 'router' directory
-	if err := os.MkdirAll(fmt.Sprintf("%s/router", dir), os.ModePerm); err != nil {
-		return fmt.Errorf("error creating router directory: %v", err)
-	}
-	// Create the 'config' directory
-	if err := os.MkdirAll(fmt.Sprintf("%s/config", dir), os.ModePerm); err != nil {
-		return fmt.Errorf("error creating config directory: %v", err)
-	}
-	// Create the 'data' directory
-	if err := os.MkdirAll(fmt.Sprintf("%s/data/requests", dir), os.ModePerm); err != nil {
-		return fmt.Errorf("error creating data directory: %v", err)
-	}
-	if err := os.MkdirAll(fmt.Sprintf("%s/data/responses", dir), os.ModePerm); err != nil {
-		return fmt.Errorf("error creating data directory: %v", err)
-	}
-	if err := os.MkdirAll(fmt.Sprintf("%s/models", dir), os.ModePerm); err != nil {
-		return fmt.Errorf("error creating data directory: %v", err)
-	}
-	// Create the 'data' directory
-	if err := os.MkdirAll(fmt.Sprintf("%s/brewer", dir), os.ModePerm); err != nil {
-		return fmt.Errorf("error creating data directory: %v", err)
-	}
-	if err := os.MkdirAll(fmt.Sprintf("%s/controller", dir), os.ModePerm); err != nil {
-		return fmt.Errorf("error creating data directory: %v", err)
-	}
-	if err := os.MkdirAll(fmt.Sprintf("%s/service", dir), os.ModePerm); err != nil {
-		return fmt.Errorf("error creating data directory: %v", err)
-	}
-	return nil
 
+	// Create the 'router' directory
+	if err := writer.CreateDir(fmt.Sprintf("%s/router", dir)); err != nil {
+		return err
+	}
+
+	// Create the 'config' directory
+	if err := writer.CreateDir(fmt.Sprintf("%s/config", dir)); err != nil {
+		return err
+	}
+
+	// Create the 'data' subdirectories
+	if err := writer.CreateDir(fmt.Sprintf("%s/data/requests", dir)); err != nil {
+		return err
+	}
+	if err := writer.CreateDir(fmt.Sprintf("%s/data/responses", dir)); err != nil {
+		return err
+	}
+
+	// Create the 'models' directory
+	if err := writer.CreateDir(fmt.Sprintf("%s/models", dir)); err != nil {
+		return err
+	}
+
+	// Create the 'brewer' directory
+	if err := writer.CreateDir(fmt.Sprintf("%s/brewer", dir)); err != nil {
+		return err
+	}
+
+	// Create the 'controller' directory
+	if err := writer.CreateDir(fmt.Sprintf("%s/controller", dir)); err != nil {
+		return err
+	}
+
+	// Create the 'service' directory
+	if err := writer.CreateDir(fmt.Sprintf("%s/service", dir)); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // createMainFile creates the main.go file
 func createMainFile(dir string, config *models.ProjectConfig) error {
 	mainFile := templates.GetMainTemplate(config)
-
-	if err := os.WriteFile(dir+"/main.go", []byte(mainFile), 0644); err != nil {
-		return fmt.Errorf("error creating main.go: %v", err)
-	}
-	return nil
+	return writer.WriteFile(dir+"/main.go", mainFile)
 }
 
 // createRouterFile creates the router.go file
 func createRouterFile(dir string, config *models.ProjectConfig) error {
 	routerFile := templates.GetRouterTemplate(config)
-
-	if err := os.WriteFile(dir+"/router/router.go", []byte(routerFile), 0644); err != nil {
-		return fmt.Errorf("error creating router.go: %v", err)
-	}
-	return nil
+	return writer.WriteFile(dir+"/router/router.go", routerFile)
 }
 
 // createGoMod initializes the Go module
@@ -249,11 +253,7 @@ func runGoModTidy(dir string) error {
 // createReadmeFile creates a README.md file with project documentation
 func createReadmeFile(dir string, config *models.ProjectConfig) error {
 	readmeContent := templates.GetReadmeTemplate(config)
-
-	if err := os.WriteFile(dir+"/README.md", []byte(readmeContent), 0644); err != nil {
-		return fmt.Errorf("error creating README.md: %v", err)
-	}
-	return nil
+	return writer.WriteFile(dir+"/README.md", readmeContent)
 }
 
 // createCorsFile creates the cors.go file with CORS configuration
@@ -262,67 +262,40 @@ func createCorsFile(dir string) error {
 	if err := os.MkdirAll(fmt.Sprintf("%s/config/cors", dir), os.ModePerm); err != nil {
 		return fmt.Errorf("error creating config/cors directory: %v", err)
 	}
-
-	if err := os.WriteFile(dir+"/config/cors/cors.go", []byte(corsFile), 0644); err != nil {
-		return fmt.Errorf("error creating cors.go: %v", err)
-	}
-	return nil
+	return writer.WriteFile(dir+"/config/cors/cors.go", corsFile)
 }
 
 // createDockerfile creates a Dockerfile for the project
 func createDockerfile(dir string) error {
 	dockerfileContent := templates.GetDockerfileTemplate()
-
-	if err := os.WriteFile(dir+"/Dockerfile", []byte(dockerfileContent), 0644); err != nil {
-		return fmt.Errorf("error creating Dockerfile: %v", err)
+	if err := writer.WriteFile(dir+"/Dockerfile", dockerfileContent); err != nil {
+		return err
 	}
 
 	dockerignoreContent := templates.GetDockerIgnoreTemplate()
-
-	if err := os.WriteFile(dir+"/.dockerignore", []byte(dockerignoreContent), 0644); err != nil {
-		return fmt.Errorf("error creating .dockerignore: %v", err)
-	}
-
-	return nil
+	return writer.WriteFile(dir+"/.dockerignore", dockerignoreContent)
 }
 
 // createDockerCompose creates a docker-compose.yml file for the project
 func createDockerCompose(dir string, config *models.ProjectConfig) error {
 	dockerComposeContent := templates.GetDockerComposeTemplate(config)
-
-	if err := os.WriteFile(dir+"/docker-compose.yml", []byte(dockerComposeContent), 0644); err != nil {
-		return fmt.Errorf("error creating docker-compose.yml: %v", err)
-	}
-
-	return nil
+	return writer.WriteFile(dir+"/docker-compose.yml", dockerComposeContent)
 }
 
+// createGitIgnore creates a .gitignore file for the project
 func createGitIgnore(dir string) error {
 	gitignoreContent := templates.GetGitIgnoreTemplate()
-
-	if err := os.WriteFile(dir+"/.gitignore", []byte(gitignoreContent), 0644); err != nil {
-		return fmt.Errorf("error creating .gitignore: %v", err)
-	}
-
-	return nil
+	return writer.WriteFile(dir+"/.gitignore", gitignoreContent)
 }
 
+// createGinshotJSON creates the ginshot.json file for the project
 func createGinshotJSON(dir string, config *models.ProjectConfig) error {
 	ginshotJSONContent := templates.GetGinshotJSONTemplate(config)
-
-	if err := os.WriteFile(dir+"/ginshot.json", []byte(ginshotJSONContent), 0644); err != nil {
-		return fmt.Errorf("error creating ginshot.json: %v", err)
-	}
-
-	return nil
+	return writer.WriteFile(dir+"/ginshot.json", ginshotJSONContent)
 }
 
+// createBrewerTemplateJSON creates the brewer/template.json file
 func createBrewerTemplateJSON(dir string, config *models.ProjectConfig) error {
 	dataJSONContent := templates.GetBrewerTemplate(config)
-
-	if err := os.WriteFile(dir+"/brewer/template.json", []byte(dataJSONContent), 0644); err != nil {
-		return fmt.Errorf("error creating template.json: %v", err)
-	}
-
-	return nil
+	return writer.WriteFile(dir+"/brewer/template.json", dataJSONContent)
 }
