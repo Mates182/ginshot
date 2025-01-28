@@ -1,0 +1,19 @@
+{
+	"project_name": "test",
+	"models": {
+		"ProjectConfig":{
+            "ProjectName": "string",
+            "Port": "int",
+            "Cors": "bool",
+            "Dockerfile": "bool",
+            "DockerCompose": "bool",
+            "GitIgnore": "bool",
+            "Services": "[]Service"
+        },
+        "Service": {
+            "Name": "string",
+            "Request": "string",
+            "Response": "string"
+        }
+	}
+}

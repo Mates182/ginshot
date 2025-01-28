@@ -5,7 +5,10 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"strconv"
 
+	"github.com/mates182/ginshot/models"
+	templates "github.com/mates182/ginshot/templ"
 	"github.com/spf13/cobra"
 )
 
@@ -41,9 +44,13 @@ func init() {
 
 // generateProject creates the project structure based on the provided name or asks for it
 func generateProject(cmd *cobra.Command, args []string) {
-	config := &InitConfig{
-		Name:          "",
-		Port:          port,
+	portString, err := strconv.Atoi(port)
+	if err != nil {
+		portString = 8080
+	}
+	config := &models.ProjectConfig{
+		ProjectName:   "",
+		Port:          portString,
 		Cors:          true,
 		Dockerfile:    false,
 		DockerCompose: false,
@@ -53,27 +60,29 @@ func generateProject(cmd *cobra.Command, args []string) {
 	// Prompt for project name if it's not provided in the arguments
 	if len(args) == 0 {
 		fmt.Print(Bold + Cyan + "Project name " + Magenta + "(recomended format: lower-case-project-name) " + Grey + ">> " + Reset)
-		fmt.Scanln(&config.Name)
+		fmt.Scanln(&config.ProjectName)
 	} else {
-		config.Name = args[0]
+		config.ProjectName = args[0]
 	}
 
 	// Validate the project name
-	if regexp.MustCompile(`^[a-zA-Z][\da-zA-Z]*([-:\/\\_*+.\[\]{}()|"',;<>?]+[\da-zA-Z]+)*$`).FindString(config.Name) == "" {
+	if regexp.MustCompile(`^[a-zA-Z][\da-zA-Z]*([-:\/\\_*+.\[\]{}()|"',;<>?]+[\da-zA-Z]+)*$`).FindString(config.ProjectName) == "" {
 		fmt.Println(Red + "Error: Project name cannot be empty, have blank spaces nor start with numbers or special characters" + Reset)
 		return
 	}
 
 	// Ask for the port if not provided by the flag
-	if config.Port == "" {
+	if port == "" {
 		fmt.Print(Bold + Cyan + "Port " + Magenta + "(default is 8080) " + Grey + ">> " + Reset)
-		fmt.Scanln(&config.Port)
+		fmt.Scanln(&port)
 	}
 
 	// Default to port 8080 if the user doesn't provide a port
-	if regexp.MustCompile(`^[\d]{1,5}$`).FindString(config.Port) == "" {
+	if regexp.MustCompile(`^[\d]{1,5}$`).FindString(fmt.Sprintf("%d", config.Port)) == "" {
 		fmt.Println(Yellow + "Using default port: 8080" + Reset)
-		config.Port = "8080"
+	} else {
+		config.Port, _ = strconv.Atoi(port)
+
 	}
 
 	if err := generateProjectFiles(config); err != nil {
@@ -82,31 +91,31 @@ func generateProject(cmd *cobra.Command, args []string) {
 	}
 
 	// Successfully created the microservice
-	fmt.Println(Bold + "Project '" + Cyan + config.Name + White + "' created " + Green + "successfully" + White + " in '" + Bold + Cyan + "./" + config.Name + White + "' on port " + Bold + Cyan + config.Port + Reset)
+	fmt.Println(Bold + "Project '" + Cyan + config.ProjectName + White + "' created " + Green + "successfully" + White + " in '" + Bold + Cyan + "./" + config.ProjectName + White + "' on port " + Bold + Cyan + strconv.Itoa(config.Port) + Reset)
 	// printProjectInstructions prints instructions for running the project
 
 	fmt.Println(Bold + "\nTo run your project:" + Reset)
-	fmt.Printf(Grey+"  cd %s\n", config.Name)
+	fmt.Printf(Grey+"  cd %s\n", config.ProjectName)
 	fmt.Println("  go run main.go" + Reset)
 	fmt.Println(Bold + "\nTest the API:" + Reset)
-	fmt.Printf(Grey+"  curl http://localhost:%s/ping\n"+Reset, config.Port)
+	fmt.Printf(Grey+"  curl http://localhost:%d/ping\n"+Reset, config.Port)
 }
 
-func generateProjectFiles(config *InitConfig) error {
+func generateProjectFiles(config *models.ProjectConfig) error {
 	// Create the project structure
-	dir := fmt.Sprintf("./%s", config.Name)
+	dir := fmt.Sprintf("./%s", config.ProjectName)
 	if err := createProjectDirectory(dir); err != nil {
 		fmt.Println(err)
 		return err
 	}
 
 	// Create the necessary files
-	if err := createMainFile(dir, config.Name, config.Port); err != nil {
+	if err := createMainFile(dir, config); err != nil {
 		fmt.Println(err)
 		return err
 	}
 
-	if err := createRouterFile(dir, config.Name); err != nil {
+	if err := createRouterFile(dir, config); err != nil {
 		fmt.Println(err)
 		return err
 	}
@@ -135,7 +144,7 @@ func generateProjectFiles(config *InitConfig) error {
 	}
 
 	// Set up the Go module
-	if err := createGoMod(dir, config.Name); err != nil {
+	if err := createGoMod(dir, config.ProjectName); err != nil {
 		fmt.Println(err)
 		return err
 	}
@@ -146,7 +155,7 @@ func generateProjectFiles(config *InitConfig) error {
 		return err
 	}
 	// Create Readme File
-	if err := createReadmeFile(dir, config.Name, config.Port); err != nil {
+	if err := createReadmeFile(dir, config); err != nil {
 		fmt.Println(err)
 		return err
 	}
@@ -163,90 +172,56 @@ func generateProjectFiles(config *InitConfig) error {
 // createProjectDirectory creates the project directory
 func createProjectDirectory(dir string) error {
 	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
-		return fmt.Errorf("Error creating project directory: %v", err)
+		return fmt.Errorf("error creating project directory: %v", err)
 	}
 	// Create the 'router' directory
 	if err := os.MkdirAll(fmt.Sprintf("%s/router", dir), os.ModePerm); err != nil {
-		return fmt.Errorf("Error creating router directory: %v", err)
+		return fmt.Errorf("error creating router directory: %v", err)
 	}
 	// Create the 'config' directory
 	if err := os.MkdirAll(fmt.Sprintf("%s/config", dir), os.ModePerm); err != nil {
-		return fmt.Errorf("Error creating config directory: %v", err)
+		return fmt.Errorf("error creating config directory: %v", err)
 	}
 	// Create the 'data' directory
 	if err := os.MkdirAll(fmt.Sprintf("%s/data/requests", dir), os.ModePerm); err != nil {
-		return fmt.Errorf("Error creating data directory: %v", err)
+		return fmt.Errorf("error creating data directory: %v", err)
 	}
 	if err := os.MkdirAll(fmt.Sprintf("%s/data/responses", dir), os.ModePerm); err != nil {
-		return fmt.Errorf("Error creating data directory: %v", err)
+		return fmt.Errorf("error creating data directory: %v", err)
 	}
 	if err := os.MkdirAll(fmt.Sprintf("%s/models", dir), os.ModePerm); err != nil {
-		return fmt.Errorf("Error creating data directory: %v", err)
+		return fmt.Errorf("error creating data directory: %v", err)
 	}
 	// Create the 'data' directory
 	if err := os.MkdirAll(fmt.Sprintf("%s/brewer", dir), os.ModePerm); err != nil {
-		return fmt.Errorf("Error creating data directory: %v", err)
+		return fmt.Errorf("error creating data directory: %v", err)
 	}
 	if err := os.MkdirAll(fmt.Sprintf("%s/controller", dir), os.ModePerm); err != nil {
-		return fmt.Errorf("Error creating data directory: %v", err)
+		return fmt.Errorf("error creating data directory: %v", err)
 	}
 	if err := os.MkdirAll(fmt.Sprintf("%s/service", dir), os.ModePerm); err != nil {
-		return fmt.Errorf("Error creating data directory: %v", err)
+		return fmt.Errorf("error creating data directory: %v", err)
 	}
 	return nil
 
 }
 
 // createMainFile creates the main.go file
-func createMainFile(dir, name, port string) error {
-	mainFile := fmt.Sprintf(`// auto-generated by ginshot
-package main
-
-import (
-	"%s/router"
-	"fmt"
-)
-
-func main() {
-	fmt.Println("%s API started!")
-	router := router.SetupRouter()
-	router.Run("0.0.0.0:%s")
-}
-	`, name, name, port)
+func createMainFile(dir string, config *models.ProjectConfig) error {
+	mainFile := templates.GetMainTemplate(config)
 
 	if err := os.WriteFile(dir+"/main.go", []byte(mainFile), 0644); err != nil {
-		return fmt.Errorf("Error creating main.go: %v", err)
+		return fmt.Errorf("error creating main.go: %v", err)
 	}
 	return nil
 }
 
 // createRouterFile creates the router.go file
-func createRouterFile(dir, name string) error {
-	routerFile := fmt.Sprintf(`//auto-generated by ginshot
-package router
-
-import (
-	"github.com/gin-gonic/gin"
-	"`+name+`/config/cors"
-)
-
-func SetupRouter() *gin.Engine {
-	router := gin.Default()
-	router.Use(cors.GetCORSConfig())
-	//[ginshot-routes]
-	// [HttpGET] Ping to %s API
-	router.GET("/ping", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"message": "pong",
-		})
-	})
-
-	return router
-}
-	`, name)
+func createRouterFile(dir string, config *models.ProjectConfig) error {
+	routerFile := templates.GetRouterTemplate(config)
 
 	if err := os.WriteFile(dir+"/router/router.go", []byte(routerFile), 0644); err != nil {
-		return fmt.Errorf("Error creating router.go: %v", err)
+		return fmt.Errorf("error creating router.go: %v", err)
 	}
 	return nil
 }
@@ -256,7 +231,7 @@ func createGoMod(dir, name string) error {
 	cmdGoMod := exec.Command("go", "mod", "init", name)
 	cmdGoMod.Dir = dir
 	if err := cmdGoMod.Run(); err != nil {
-		return fmt.Errorf("Error creating go.mod: %v", err)
+		return fmt.Errorf("error creating go.mod: %v", err)
 	}
 	return nil
 }
@@ -266,311 +241,87 @@ func runGoModTidy(dir string) error {
 	cmdGoModTidy := exec.Command("go", "mod", "tidy")
 	cmdGoModTidy.Dir = dir
 	if err := cmdGoModTidy.Run(); err != nil {
-		return fmt.Errorf("Error running go mod tidy: %v", err)
+		return fmt.Errorf("error running go mod tidy: %v", err)
 	}
 	return nil
 }
 
 // createReadmeFile creates a README.md file with project documentation
-func createReadmeFile(dir, name, port string) error {
-	readmeContent := fmt.Sprintf(`# %s
-
-A Gin-based microservice created with ginshot.
-
-## Getting Started
-
-These instructions will help you run the project on your local machine.
-
-### Prerequisites
-
-- Go 1.16 or higher
-
-### Running the service
-
-1. Start the server:
-   `+"```"+`bash
-   go run main.go
-   `+"```"+`
-   `+"```"+`bash
-   curl http://localhost:%s/ping
-   `+"```"+`
-
-## API Endpoints
-
-- GET /ping - Health check endpoint that returns "pong"
-
-## Built With
-
-- [Gin](https://github.com/gin-gonic/gin) - Web framework
-- [ginshot](https://github.com/yourusername/ginshot) - Project scaffolding tool
-
-`, name, port)
+func createReadmeFile(dir string, config *models.ProjectConfig) error {
+	readmeContent := templates.GetReadmeTemplate(config)
 
 	if err := os.WriteFile(dir+"/README.md", []byte(readmeContent), 0644); err != nil {
-		return fmt.Errorf("Error creating README.md: %v", err)
+		return fmt.Errorf("error creating README.md: %v", err)
 	}
 	return nil
 }
 
 // createCorsFile creates the cors.go file with CORS configuration
 func createCorsFile(dir string) error {
-	corsFile := `// auto-generated by ginshot
-package cors
-
-import (
-	"github.com/gin-contrib/cors"
-	"github.com/gin-gonic/gin"
-)
-
-func GetCORSConfig() gin.HandlerFunc {
-	corsConfig := cors.New(cors.Config{
-		// Set to true to allow all origins (remove if you want to allow specific origins only)
-		AllowAllOrigins: true, 
-
-		// Uncomment and modify the line below to allow specific origins instead of all
-		// AllowOrigins: []string{"http://localhost:80", "https://example.com"}, 
-
-		// Define allowed HTTP methods (adjust according to your API needs)
-		AllowMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},
-
-		// Specify the allowed headers (remove or add headers as required by your application)
-		AllowHeaders: []string{"Origin", "Content-Length", "Content-Type", "Authorization"},
-
-		// Set to true to allow credentials such as cookies or authorization headers
-		AllowCredentials: true,
-	})
-
-	return corsConfig
-}
-
-`
+	corsFile := templates.GetCORSTemplate()
 	if err := os.MkdirAll(fmt.Sprintf("%s/config/cors", dir), os.ModePerm); err != nil {
-		return fmt.Errorf("Error creating config/cors directory: %v", err)
+		return fmt.Errorf("error creating config/cors directory: %v", err)
 	}
 
 	if err := os.WriteFile(dir+"/config/cors/cors.go", []byte(corsFile), 0644); err != nil {
-		return fmt.Errorf("Error creating cors.go: %v", err)
+		return fmt.Errorf("error creating cors.go: %v", err)
 	}
 	return nil
 }
 
 // createDockerfile creates a Dockerfile for the project
 func createDockerfile(dir string) error {
-	dockerfileContent := `# auto-generated by ginshot
-# change the version if needed
-FROM golang:alpine AS builder
-
-WORKDIR /app
-
-COPY go.mod go.sum ./
-
-RUN go mod tidy
-
-COPY . .
-
-RUN go build -o main main.go
-
-FROM alpine:latest
-
-RUN apk --no-cache add ca-certificates
-
-WORKDIR /root/
-
-COPY --from=builder /app/main .
-
-EXPOSE 80
-
-CMD ["./main"]
-`
+	dockerfileContent := templates.GetDockerfileTemplate()
 
 	if err := os.WriteFile(dir+"/Dockerfile", []byte(dockerfileContent), 0644); err != nil {
-		return fmt.Errorf("Error creating Dockerfile: %v", err)
+		return fmt.Errorf("error creating Dockerfile: %v", err)
 	}
 
-	dockerignoreContent := `# auto-generated by ginshot
-# Ginshot Files (optional)
-ginshot.json
-brewer
-
-
-# Binaries and build artifacts
-*.exe
-*.exe~
-*.dll
-*.so
-*.dylib
-*.test
-*.out
-
-# IDE files
-.idea/
-.vscode/
-*.swp
-*.swo
-
-# Dependencies
-vendor/
-
-# Git
-.git
-.gitignore
-
-# Logs
-*.log
-
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# Secrets
-.env
-.env.local
-.env.*.local
-`
+	dockerignoreContent := templates.GetDockerIgnoreTemplate()
 
 	if err := os.WriteFile(dir+"/.dockerignore", []byte(dockerignoreContent), 0644); err != nil {
-		return fmt.Errorf("Error creating .dockerignore: %v", err)
+		return fmt.Errorf("error creating .dockerignore: %v", err)
 	}
 
 	return nil
 }
 
 // createDockerCompose creates a docker-compose.yml file for the project
-func createDockerCompose(dir string, config *InitConfig) error {
-	dockerComposeContent := `# auto-generated by ginshot
-# Uncomment if needed
-# version: '3.8'
-
-services:
-  ` + config.Name + `:
-    build: .
-    ports:
-      - "` + config.Port + `:` + config.Port + `"
-    container_name: ` + config.Name + `
-    environment:
-      - GIN_MODE=release
-    volumes:
-      - .:/app
-    networks:
-      - app-network
-    restart: unless-stopped
-
-networks:
-  app-network:
-    driver: bridge`
+func createDockerCompose(dir string, config *models.ProjectConfig) error {
+	dockerComposeContent := templates.GetDockerComposeTemplate(config)
 
 	if err := os.WriteFile(dir+"/docker-compose.yml", []byte(dockerComposeContent), 0644); err != nil {
-		return fmt.Errorf("Error creating docker-compose.yml: %v", err)
+		return fmt.Errorf("error creating docker-compose.yml: %v", err)
 	}
 
 	return nil
 }
 
 func createGitIgnore(dir string) error {
-	gitignoreContent := `# auto-generated by ginshot
-# Ginshot Files (optional)
-# ginshot.json
-# brewer
-
-# Binaries and build artifacts
-*.exe
-*.exe~
-*.dll
-*.so
-*.dylib
-*.test
-*.out
-
-# IDE files
-.idea/
-.vscode/
-*.swp
-*.swo
-
-# Dependencies
-vendor/
-
-# Logs
-*.log
-
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# Secrets
-.env
-.env.local
-.env.*.local
-`
+	gitignoreContent := templates.GetGitIgnoreTemplate()
 
 	if err := os.WriteFile(dir+"/.gitignore", []byte(gitignoreContent), 0644); err != nil {
-		return fmt.Errorf("Error creating .gitignore: %v", err)
+		return fmt.Errorf("error creating .gitignore: %v", err)
 	}
 
 	return nil
 }
 
-func createGinshotJSON(dir string, config *InitConfig) error {
-	ginshotJSONContent := `{
-	"project_name": "` + config.Name + `",
-	"port": "` + config.Port + `",
-	"cors": true,
-	"dockerfile": true,
-	"docker_compose": true,
-	"gitignore": true
-}`
+func createGinshotJSON(dir string, config *models.ProjectConfig) error {
+	ginshotJSONContent := templates.GetGinshotJSONTemplate(config)
 
 	if err := os.WriteFile(dir+"/ginshot.json", []byte(ginshotJSONContent), 0644); err != nil {
-		return fmt.Errorf("Error creating ginshot.json: %v", err)
+		return fmt.Errorf("error creating ginshot.json: %v", err)
 	}
 
 	return nil
 }
 
-func createBrewerTemplateJSON(dir string, config *InitConfig) error {
-	dataJSONContent := `{
-	"project_name": "` + config.Name + `",
-	"models": {
-		"Ping": {
-			"Message": "string",
-			"Greeting": "Greeting"
-		},
-		"Greeting": {
-			"Hello": "string"
-		}
-	},
-	"requests": {
-		"PingRequest": {
-			"Data": "PingRequestData",
-			"Message": "string"
-		},
-		"PingRequestData": {
-			"Message": "string"
-		}
-	},
-	"responses": {
-		"PingResponse": {
-			"Data": "PingResponseData",
-			"Message": "string"
-		},
-		"PingResponseData": {
-			"Ping": "models.Ping"
-		}
-	}
-}`
+func createBrewerTemplateJSON(dir string, config *models.ProjectConfig) error {
+	dataJSONContent := templates.GetBrewerTemplate(config)
 
 	if err := os.WriteFile(dir+"/brewer/template.json", []byte(dataJSONContent), 0644); err != nil {
-		return fmt.Errorf("Error creating template.json: %v", err)
+		return fmt.Errorf("error creating template.json: %v", err)
 	}
 
 	return nil
