@@ -24,7 +24,12 @@ import (
 	requests "%s/data/requests"
 	responses "%s/data/responses" 
 	services "%s/service"
-	"%s/models"
+	`+func() string {
+		if crudType == 2 || crudType == 4 {
+			return config.ProjectName + "/models"
+		}
+		return ""
+	}()+`
 )
 
 type %sController struct {
@@ -42,7 +47,7 @@ func (ctrl *%sController) %s(c *gin.Context) {
 	status, res := ctrl.%sService.%sHandler(request)
 
 	c.IndentedJSON(status, res)
-}`, config.ProjectName, config.ProjectName, config.ProjectName, config.ProjectName,
+}`, config.ProjectName, config.ProjectName, config.ProjectName,
 		proyectName, proyectName, proyectName,
 		proyectName, proyectName, proyectName, proyectName, proyectName,
 		proyectName, proyectName,

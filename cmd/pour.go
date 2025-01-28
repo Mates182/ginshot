@@ -83,7 +83,7 @@ func createDBFiles(db, name string) {
 	}
 	config.Database.Name = name
 	config.Database.Type = db
-	config.Database.Table = db
+	config.Database.Table = name
 
 	writer.SaveConfig(".", config)
 	switch db {
