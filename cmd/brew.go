@@ -117,10 +117,7 @@ func generateScaffoldFromJSON(jsonPath string) {
 		var useBson string
 		fmt.Print("Include bson? (y/n): ")
 		fmt.Scanln(&useBson)
-		includeBson := true
-		if strings.ToLower(useBson) != "y" {
-			fmt.Println("Using bson")
-		}
+		includeBson := strings.ToLower(useBson) == "y"
 		for modelName, modelFields := range template.Models {
 			modelFileName := fmt.Sprintf("./models/%s.go", modelName)
 			modelFileContent := generateModelGo(modelName, modelFields, template.ProjectName, includeBson)

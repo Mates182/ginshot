@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strconv"
 
+	"github.com/mates182/ginshot/formatter"
 	"github.com/mates182/ginshot/models"
 	templates "github.com/mates182/ginshot/templ"
 	"github.com/mates182/ginshot/writer"
@@ -47,11 +48,15 @@ func generateProject(cmd *cobra.Command, args []string) {
 		Dockerfile:    true,
 		DockerCompose: true,
 		GitIgnore:     true,
+		Database: models.Database{
+			Model: "Data",
+			ID:    "ID",
+		},
 	}
 
 	// Prompt for project name if it's not provided in the arguments
 	if len(args) == 0 {
-		fmt.Print(Bold + Cyan + "Project name " + Magenta + "(recomended format: lower-case-project-name) " + Grey + ">> " + Reset)
+		fmt.Print(Bold + Cyan + "Project name " + Magenta + "(format: lower-case-project-name) " + Grey + ">> " + Reset)
 		fmt.Scanln(&config.ProjectName)
 	} else {
 		config.ProjectName = args[0]
@@ -82,6 +87,12 @@ func generateProject(cmd *cobra.Command, args []string) {
 		config.Port = 8080
 	}
 
+	fmt.Print(Bold + Cyan + "Model Name:" + Magenta + "(recomended format: PascalCase) " + Grey + ">> " + Reset)
+	fmt.Scanln(&config.Database.Model)
+
+	fmt.Print(Bold + Cyan + "Model ID Name:" + Magenta + "(recomended format: PascalCase) " + Grey + ">> " + Reset)
+	fmt.Scanln(&config.Database.ID)
+
 	if err := generateProjectFiles(config); err != nil {
 		fmt.Println(err)
 		return
@@ -92,7 +103,7 @@ func generateProject(cmd *cobra.Command, args []string) {
 	// printProjectInstructions prints instructions for running the project
 
 	fmt.Println(Bold + "\nTo run your project:" + Reset)
-	fmt.Printf(Grey+"  cd %s\n", config.ProjectName)
+	fmt.Printf(Grey+"  cd %s\n", formatter.ToPascalCase(config.ProjectName))
 	fmt.Println("  go run main.go" + Reset)
 	fmt.Println(Bold + "\nTest the API:" + Reset)
 	fmt.Printf(Grey+"  curl http://localhost:%d/ping\n"+Reset, config.Port)
@@ -100,7 +111,8 @@ func generateProject(cmd *cobra.Command, args []string) {
 
 func generateProjectFiles(config *models.ProjectConfig) error {
 	// Create the project structure
-	dir := fmt.Sprintf("./%s", config.ProjectName)
+	projectName := formatter.ToPascalCase(config.ProjectName)
+	dir := fmt.Sprintf("./%s", projectName)
 	if err := createProjectDirectory(dir); err != nil {
 		fmt.Println(err)
 		return err

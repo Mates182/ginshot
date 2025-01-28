@@ -24,6 +24,7 @@ import (
 	requests "%s/data/requests"
 	responses "%s/data/responses" 
 	services "%s/service"
+	"%s/models"
 )
 
 type %sController struct {
@@ -41,7 +42,7 @@ func (ctrl *%sController) %s(c *gin.Context) {
 	status, res := ctrl.%sService.%sHandler(request)
 
 	c.IndentedJSON(status, res)
-}`, config.ProjectName, config.ProjectName, config.ProjectName,
+}`, config.ProjectName, config.ProjectName, config.ProjectName, config.ProjectName,
 		proyectName, proyectName, proyectName,
 		proyectName, proyectName, proyectName, proyectName, proyectName,
 		proyectName, proyectName,
@@ -62,12 +63,12 @@ func GetRequestWithBodyTemplate(projectName string) string {
 func GetRequestWithParamsTemplate(id string, model string, projectName string) string {
 	return fmt.Sprintf(`%s := c.Param("%s")
 	if %s == "" {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "%s is required"})
+		c.IndentedJSON(http.StatusBadRequest, responses.%sResponse{Message: "%s is required"})
 		return
 	}
 	request := requests.%sRequest{%s: models.%s{%s: %s}}
 `, id, id,
 		id,
-		id,
+		projectName, id,
 		projectName, model, model, id, id)
 }

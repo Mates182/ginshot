@@ -49,8 +49,8 @@ func init() {
 	rootCmd.AddCommand(pourCmd)
 
 	// Add flags for specifying the database and name
-	pourCmd.Flags().String("db", "", "Database to use (redis, mongo)")
-	pourCmd.Flags().String("name", "", "Custom name for the generated files")
+	pourCmd.Flags().String("db", "", "Database to use (redis, mongo): ")
+	pourCmd.Flags().String("name", "", "Database name: ")
 }
 
 // ReadProjectName lee el archivo ginshot.json y devuelve el nombre del proyecto
@@ -58,7 +58,7 @@ func ReadProjectName() (string, error) {
 	// Abrir el archivo ginshot.json
 	file, err := os.Open("ginshot.json")
 	if err != nil {
-		return "", fmt.Errorf("Error opening ginshot.json: %v", err)
+		return "", fmt.Errorf("error opening ginshot.json: %v", err)
 	}
 	defer file.Close()
 
@@ -67,7 +67,7 @@ func ReadProjectName() (string, error) {
 	decoder := json.NewDecoder(file)
 	err = decoder.Decode(&config)
 	if err != nil {
-		return "", fmt.Errorf("Error decoding ginshot.json: %v", err)
+		return "", fmt.Errorf("error decoding ginshot.json: %v", err)
 	}
 
 	// Devolver el nombre del proyecto

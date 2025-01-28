@@ -90,13 +90,9 @@ var mixCmd = &cobra.Command{
 
 		dbType = config.Database.Type
 
-		var model string
-		fmt.Print("Type the Model name: ")
-		fmt.Scanln(&model)
+		model := config.Database.Model
 
-		var id string
-		fmt.Print("Type the Model Search Atribute name: ")
-		fmt.Scanln(&id)
+		id := config.Database.ID
 
 		generateController(config, serviceName, crudType, id, model)
 		generateService(projectName, serviceName, requestType, responseType)

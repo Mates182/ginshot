@@ -112,7 +112,7 @@ func GetDeleteLogicTemplate(config *models.ProjectConfig, model string, id strin
 		return http.StatusNotFound, responses.%sResponse{Message: "%s not found"}
 	}
 
-	response := responses.%sResponse{Message: "%s deleted successfully"}`, config.Database.Name, config.Database.Table, id, model, id, proyectName, model, proyectName, model, proyectName, model)
+	response := responses.%sResponse{Message: "%s deleted successfully", %s: request.%s}`, config.Database.Name, config.Database.Table, id, model, id, proyectName, model, proyectName, model, proyectName, model, model, model)
 }
 func GetReadLogicTemplate(config *models.ProjectConfig, model string, id string) string {
 	proyectName := formatter.ToPascalCase(config.ProjectName)

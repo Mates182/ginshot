@@ -12,7 +12,7 @@ func GetBrewerTemplate(config *models.ProjectConfig) string {
 	return fmt.Sprintf(`{
 	"project_name": "%s",
 	"models": {
-		"Data": {
+		"%s": {
 			"ID": "string",
 			"Message": "string",
 			"Greeting": "Greeting"
@@ -23,15 +23,20 @@ func GetBrewerTemplate(config *models.ProjectConfig) string {
 	},
 	"requests": {
 		"%sRequest": {
-			"Data": "models.Data",
+			"%s": "models.%s",
 			"Message": "string"
 		}
 	},
 	"responses": {
 		"%sResponse": {
-			"Data": "models.Data",
+			"%s": "models.%s",
 			"Message": "string"
 		}
 	}
-}`, config.ProjectName, projectName, projectName)
+}`, config.ProjectName,
+		config.Database.Model,
+		projectName,
+		config.Database.Model, config.Database.Model,
+		projectName,
+		config.Database.Model, config.Database.Model)
 }

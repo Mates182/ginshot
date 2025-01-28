@@ -13,7 +13,9 @@
         "Database": {
             "Name": "string",
             "Type": "string",
-            "Table": "string"
+            "Table": "string",
+            "Model": "string",
+            "ID": "string"
         }
 	}
 }
