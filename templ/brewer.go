@@ -13,6 +13,7 @@ func GetBrewerTemplate(config *models.ProjectConfig) string {
 	"project_name": "%s",
 	"models": {
 		"Data": {
+			"ID": "string",
 			"Message": "string",
 			"Greeting": "Greeting"
 		},

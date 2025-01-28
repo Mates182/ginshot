@@ -8,12 +8,12 @@
             "Dockerfile": "bool",
             "DockerCompose": "bool",
             "GitIgnore": "bool",
-            "Services": "[]Service"
+            "Database": "Database"
         },
-        "Service": {
+        "Database": {
             "Name": "string",
-            "Request": "string",
-            "Response": "string"
+            "Type": "string",
+            "Table": "string"
         }
 	}
 }

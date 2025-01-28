@@ -7,6 +7,10 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/mates182/ginshot/models"
+	"github.com/mates182/ginshot/reader"
+	templates "github.com/mates182/ginshot/templ"
+	"github.com/mates182/ginshot/writer"
 	"github.com/spf13/cobra"
 )
 
@@ -59,7 +63,7 @@ func ReadProjectName() (string, error) {
 	defer file.Close()
 
 	// Decodificar el archivo JSON
-	var config ProjectConfig
+	var config models.ProjectConfig
 	decoder := json.NewDecoder(file)
 	err = decoder.Decode(&config)
 	if err != nil {
@@ -72,11 +76,16 @@ func ReadProjectName() (string, error) {
 
 // createDBFiles generates the necessary files based on the chosen database and name
 func createDBFiles(db, name string) {
-	projectName, err := ReadProjectName()
+	config, err := reader.LoadConfig()
 	if err != nil {
-		fmt.Println("Error reading project name:", err)
+		fmt.Println("Error reading project config:", err)
 		return
 	}
+	config.Database.Name = name
+	config.Database.Type = db
+	config.Database.Table = db
+
+	writer.SaveConfig(config)
 	switch db {
 	case "redis":
 		// Create Redis files with the specified name
@@ -92,7 +101,7 @@ func createDBFiles(db, name string) {
 		fmt.Println("Unknown database type. Please choose either redis or mongo.")
 	}
 	// Generate dbcontext files
-	generateDBContextFiles(projectName, db, name)
+	generateDBContextFiles(config, db, name)
 	// Pass the name to the function
 	generateSecretsFile(db, name) // Pass the name to the function
 
@@ -141,7 +150,7 @@ func promptForName(db string) {
 	createDBFiles(db, name)
 }
 
-func generateDBContextFiles(projectName, db, name string) {
+func generateDBContextFiles(config *models.ProjectConfig, db, name string) {
 	// Define the base directory for dbcontext
 	baseDir := fmt.Sprintf("dbcontext/%s", name)
 
@@ -153,85 +162,7 @@ func generateDBContextFiles(projectName, db, name string) {
 	}
 
 	// Create dbcontext.go for the selected database (mongo or redis)
-	var dbContextTemplate string
-
-	switch db {
-	case "mongo":
-		dbContextTemplate = `
-package dbcontext
-
-import (
-	"context"
-	"` + projectName + `/secrets"
-	"fmt"
-	"sync"
-
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/mongo/readpref"
-)
-
-var clientInstance *mongo.Client
-var clientOnce sync.Once
-
-func GetDBClient() *mongo.Client {
-	clientOnce.Do(func() {
-		endpoint := secrets.Get` + name + `DBURI()
-		client, err := mongo.Connect(context.Background(), options.Client().ApplyURI(endpoint))
-		if err != nil {
-			panic(err)
-		}
-		fmt.Println("Connected to ` + name + ` Database Server")
-
-		err = client.Ping(context.Background(), readpref.Primary())
-		if err != nil {
-			panic(err)
-		}
-		fmt.Println("Pong")
-		clientInstance = client
-	})
-
-	return clientInstance
-}
-		`
-	case "redis":
-		dbContextTemplate = `
-package dbcontext
-
-import (
-	"context"
-	"` + projectName + `/secrets"
-	"fmt"
-
-	"github.com/go-redis/redis/v8"
-)
-
-func GetDBClient() *redis.Client {
-
-	dbURI := secrets.Get` + name + `DBURI()
-	dbPassword := secrets.Get` + name + `DBPassword()
-	dbOptions := &redis.Options{
-		Addr: dbURI,
-		DB:   0,
-	}
-	if dbPassword != "" {
-		dbOptions.Password = dbPassword
-	}
-
-	client := redis.NewClient(dbOptions)
-	ping, err := client.Ping(context.Background()).Result()
-	if err != nil {
-		fmt.Printf("Failed to connect to DB: %s\n", err.Error())
-		return nil
-	}
-	fmt.Printf("Ping: %s\n", ping)
-	return client
-}
-`
-	default:
-		fmt.Println("Unsupported database type.")
-		return
-	}
+	dbContextTemplate := templates.GetDBContextTemplate(config, db, name)
 
 	// Generate the dbcontext.go file content
 	tmpl, err := template.New("dbcontext").Parse(dbContextTemplate)

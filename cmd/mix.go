@@ -7,13 +7,13 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/mates182/ginshot/formatter"
+	"github.com/mates182/ginshot/models"
+	"github.com/mates182/ginshot/reader"
+	templates "github.com/mates182/ginshot/templ"
+	"github.com/mates182/ginshot/writer"
 	"github.com/spf13/cobra"
 )
-
-// ProjectConfig represents the structure of ginshot.json
-type ProjectConfig struct {
-	ProjectName string `json:"project_name"`
-}
 
 // Read project name from ginshot.json
 func getProjectName() string {
@@ -23,7 +23,7 @@ func getProjectName() string {
 		os.Exit(1)
 	}
 
-	var config ProjectConfig
+	var config models.ProjectConfig
 	if err := json.Unmarshal(file, &config); err != nil {
 		fmt.Println("Error parsing ginshot.json:", err)
 		os.Exit(1)
@@ -39,79 +39,79 @@ var mixCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		var serviceName, routeName, routeType, requestType, responseType, dbType string
 		projectName := getProjectName()
+		config, err := reader.LoadConfig()
+		if err != nil {
+			fmt.Println("Error reading project config:", err)
+			return
+		}
+		serviceName = formatter.ToPascalCase(config.ProjectName)
 
-		fmt.Print("Enter the service name: ")
-		fmt.Scanln(&serviceName)
+		var crudType int
 
-		fmt.Print("Enter the route name (e.g., /api/ping): ")
-		fmt.Scanln(&routeName)
+		fmt.Print(Bold + Cyan + `Select the CRUD Type:
+	` + White + `(1) Create
+	` + White + `(2) Read
+	` + White + `(3) Update
+	` + White + `(4) Delete
+	` + White + `(5) List
+	` + White + `(6) Custom
+` + Grey + `>> ` + Reset)
+		fmt.Scanln(&crudType)
 
-		fmt.Print("Enter the route type (GET, POST, PUT, DELETE): ")
-		fmt.Scanln(&routeType)
+		switch crudType {
+		case 1:
+			routeType = "POST"
+			routeName = "/create"
+		case 2:
+			routeType = "GET"
+			routeName = "/get/:id"
+		case 3:
+			routeType = "PATCH"
+			routeName = "/update"
+		case 4:
+			routeType = "DELETE"
+			routeName = "/delete/:id"
+		case 5:
+			routeType = "GET"
+			routeName = "/list"
+		case 6:
+			fmt.Print("Enter the route name (e.g., /api/ping): ")
+			fmt.Scanln(&routeName)
 
-		fmt.Print("Enter the request type (e.g., PingRequest): ")
-		fmt.Scanln(&requestType)
+			fmt.Print("Enter the route type (GET, POST, PUT, DELETE): ")
+			fmt.Scanln(&routeType)
+		default:
+			fmt.Println(Bold + Yellow + "Invalid selection. Exiting." + Reset)
+			return
+		}
 
-		fmt.Print("Enter the response type (e.g., PingResponse): ")
-		fmt.Scanln(&responseType)
+		requestType = formatter.ToPascalCase(config.ProjectName) + "Request"
+		responseType = formatter.ToPascalCase(config.ProjectName) + "Response"
 
-		fmt.Print("Enter database type (e.g., mongo, redis, or neither): ")
-		fmt.Scanln(&dbType)
+		dbType = config.Database.Type
 
-		generateController(projectName, serviceName, requestType, responseType)
+		var model string
+		fmt.Print("Type the Model name: ")
+		fmt.Scanln(&model)
+
+		var id string
+		fmt.Print("Type the Model Search Atribute name: ")
+		fmt.Scanln(&id)
+
+		generateController(config, serviceName, crudType, id, model)
 		generateService(projectName, serviceName, requestType, responseType)
-		generateServiceImpl(projectName, serviceName, requestType, responseType, dbType)
-		updateRouter(projectName, routeName, routeType, serviceName, dbType)
+		generateServiceImpl(config, serviceName, crudType, model, id, dbType)
+		updateRouter(config, routeName, routeType, serviceName)
 
 		fmt.Println("Files generated and router updated successfully.")
 	},
 }
 
-func generateController(projectName, serviceName, requestType, responseType string) {
-	controllerTemplate := `// auto-generated with ginshot
-package controller
+func generateController(config *models.ProjectConfig, serviceName string, crudType int, id, model string) {
+	controllerTemplate := templates.GetControllerTemplate(config, crudType, id, model)
 
-import (
-	"net/http"
-	"github.com/gin-gonic/gin"
-	requests "{{.ProjectName}}/data/requests"
-	responses "{{.ProjectName}}/data/responses"
-	services "{{.ProjectName}}/service"
-)
-
-type {{.ServiceName}}Controller struct {
-	{{.ServiceName}}Service services.{{.ServiceName}}Service
-}
-
-func New{{.ServiceName}}Controller(service services.{{.ServiceName}}Service) *{{.ServiceName}}Controller {
-	return &{{.ServiceName}}Controller{
-		{{.ServiceName}}Service: service,
-	}
-}
-
-func (ctrl *{{.ServiceName}}Controller) {{.ServiceName}}(c *gin.Context) {
-	var request requests.{{.RequestType}}
-	if err := c.BindJSON(&request); err != nil {
-		c.IndentedJSON(http.StatusBadRequest, responses.{{.ResponseType}}{Message: "Invalid request body"})
-		return
-	}
-	status, res := ctrl.{{.ServiceName}}Service.{{.ServiceName}}Handler(request)
-
-	c.IndentedJSON(status, res)
-}
-`
-
-	fileName := fmt.Sprintf("./controller/%s-controller.go", serviceName)
-	file, _ := os.Create(fileName)
-	defer file.Close()
-
-	tmpl, _ := template.New("controller").Parse(controllerTemplate)
-	tmpl.Execute(file, map[string]string{
-		"ServiceName":  serviceName,
-		"RequestType":  requestType,
-		"ResponseType": responseType,
-		"ProjectName":  projectName,
-	})
+	dir := fmt.Sprintf("./controller/%s-controller.go", serviceName)
+	writer.WriteFile(dir, controllerTemplate)
 }
 
 func generateService(projectName, serviceName, requestType, responseType string) {
@@ -141,7 +141,7 @@ type {{.ServiceName}}Service interface {
 	})
 }
 
-func generateServiceImpl(projectName, serviceName, requestType, responseType string, db ...string) {
+func generateServiceImpl(config *models.ProjectConfig, serviceName string, crudType int, model string, id string, db ...string) {
 	// Set default value if includeBson is not provided
 	dbName := ""
 	if len(db) > 0 {
@@ -149,76 +149,14 @@ func generateServiceImpl(projectName, serviceName, requestType, responseType str
 
 	}
 
-	serviceImplTemplate := `// auto-generated with ginshot
-package service
+	serviceImplTemplate := templates.GetServiceImplTemplate(config, dbName, serviceName, model, id, crudType)
 
-import (
-	requests "{{.ProjectName}}/data/requests"
-	responses "{{.ProjectName}}/data/responses"
-	"net/http"
-	` + func() string {
-		if dbName != "" {
-			if dbName == "mongo" {
-				return `"go.mongodb.org/mongo-driver/mongo"`
-			} else if dbName == "redis" {
-				return `"github.com/go-redis/redis/v8"`
-			}
-		}
-		return ""
-	}() + `
-)
-type {{.ServiceName}}ServiceImpl struct {
-	// Add Components
-	` + func() string {
-		if dbName != "" {
-			return "DBClient *" + dbName + ".Client"
-		}
-		return ""
-	}() + `
+	dir := fmt.Sprintf("./service/%s-service-impl.go", serviceName)
+	writer.WriteFile(dir, serviceImplTemplate)
 }
 
-func New{{.ServiceName}}ServiceImpl(` + func() string {
-		if dbName != "" {
-			return "dbClient *" + dbName + ".Client"
-		}
-		return ""
-	}() + `) {{.ServiceName}}Service {
-	return &{{.ServiceName}}ServiceImpl{
-		// Add Components
-		` + func() string {
-		if dbName != "" {
-			return "DBClient: dbClient,"
-		}
-		return ""
-	}() + `
-	}
-}
-
-func (service *{{.ServiceName}}ServiceImpl) {{.ServiceName}}Handler(request requests.{{.RequestType}}) (int, responses.{{.ResponseType}}) {
-	response := responses.{{.ResponseType}}{}
-	return http.StatusOK, response
-}
-`
-
-	fileName := fmt.Sprintf("./service/%s-service-impl.go", serviceName)
-	file, _ := os.Create(fileName)
-	defer file.Close()
-
-	tmpl, _ := template.New("serviceImpl").Parse(serviceImplTemplate)
-	tmpl.Execute(file, map[string]string{
-		"ProjectName":  projectName,
-		"ServiceName":  serviceName,
-		"RequestType":  requestType,
-		"ResponseType": responseType,
-	})
-}
-
-func updateRouter(projectName, routeName, routeType, serviceName string, db ...string) {
-	dbName := ""
-	if len(db) > 0 {
-		fmt.Print("Enter database Name: ")
-		fmt.Scanln(&dbName)
-	}
+func updateRouter(config *models.ProjectConfig, routeName, routeType, serviceName string) {
+	dbName := config.Database.Name
 	routerFileName := "./router/router.go"
 	file, _ := os.OpenFile(routerFileName, os.O_RDWR, 0644)
 	defer file.Close()
@@ -241,9 +179,9 @@ func updateRouter(projectName, routeName, routeType, serviceName string, db ...s
 		newContent := strings.Replace(fileContent, insertPoint, insertPoint+insertCode, 1)
 
 		// Import statements for both controller and service
-		importController := "\n\t\"" + projectName + "/controller\""
-		importService := "\n\t\"" + projectName + "/service\""
-		importDbContext := "\n\t\"" + projectName + "/dbcontext/" + dbName + "\""
+		importController := "\n\t\"" + config.ProjectName + "/controller\""
+		importService := "\n\t\"" + config.ProjectName + "/service\""
+		importDbContext := "\n\t\"" + config.ProjectName + "/dbcontext/" + dbName + "\""
 
 		importInsertPoint := "import ("
 		if !strings.Contains(newContent, importController) {
