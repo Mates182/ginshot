@@ -3,14 +3,16 @@ package templates
 import (
 	"fmt"
 
+	"github.com/mates182/ginshot/formatter"
 	"github.com/mates182/ginshot/models"
 )
 
 func GetBrewerTemplate(config *models.ProjectConfig) string {
+	projectName := formatter.ToPascalCase(config.ProjectName)
 	return fmt.Sprintf(`{
 	"project_name": "%s",
 	"models": {
-		"Ping": {
+		"Data": {
 			"Message": "string",
 			"Greeting": "Greeting"
 		},
@@ -19,16 +21,16 @@ func GetBrewerTemplate(config *models.ProjectConfig) string {
 		}
 	},
 	"requests": {
-		"PingRequest": {
-			"Data": "models.Ping",
+		"%sRequest": {
+			"Data": "models.Data",
 			"Message": "string"
 		}
 	},
 	"responses": {
-		"PingResponse": {
-			"Data": "models.Ping",
+		"%sResponse": {
+			"Data": "models.Data",
 			"Message": "string"
 		}
 	}
-}`, config.ProjectName)
+}`, config.ProjectName, projectName, projectName)
 }

@@ -25,15 +25,6 @@ ginshot init my-service`,
 	Run:  generateProject,
 }
 
-type InitConfig struct {
-	Name          string
-	Port          string
-	Cors          bool
-	Dockerfile    bool
-	DockerCompose bool
-	GitIgnore     bool
-}
-
 var port string
 
 func init() {
@@ -53,8 +44,8 @@ func generateProject(cmd *cobra.Command, args []string) {
 		ProjectName:   "",
 		Port:          portString,
 		Cors:          true,
-		Dockerfile:    false,
-		DockerCompose: false,
+		Dockerfile:    true,
+		DockerCompose: true,
 		GitIgnore:     true,
 	}
 
