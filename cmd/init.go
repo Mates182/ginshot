@@ -82,8 +82,13 @@ func generateProject(cmd *cobra.Command, args []string) {
 	if regexp.MustCompile(`^[\d]{1,5}$`).FindString(fmt.Sprintf("%d", config.Port)) == "" {
 		fmt.Println(Yellow + "Using default port: 8080" + Reset)
 	} else {
-		config.Port, _ = strconv.Atoi(port)
 
+	}
+
+	config.Port, err = strconv.Atoi(port)
+	if err != nil {
+		fmt.Println(Yellow + "Using default port: 8080" + Reset)
+		config.Port = 8080
 	}
 
 	if err := generateProjectFiles(config); err != nil {
