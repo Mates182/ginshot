@@ -85,7 +85,7 @@ func createDBFiles(db, name string) {
 	config.Database.Type = db
 	config.Database.Table = db
 
-	writer.SaveConfig(config)
+	writer.SaveConfig(".", config)
 	switch db {
 	case "redis":
 		// Create Redis files with the specified name

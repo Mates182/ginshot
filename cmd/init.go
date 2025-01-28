@@ -298,8 +298,7 @@ func createGitIgnore(dir string) error {
 
 // createGinshotJSON creates the ginshot.json file for the project
 func createGinshotJSON(dir string, config *models.ProjectConfig) error {
-	ginshotJSONContent := templates.GetGinshotJSONTemplate(config)
-	return writer.WriteFile(dir+"/ginshot.json", ginshotJSONContent)
+	return writer.SaveConfig(dir, config)
 }
 
 // createBrewerTemplateJSON creates the brewer/template.json file

@@ -22,8 +22,8 @@ func CreateDir(dirPath string) error {
 	return nil
 }
 
-func SaveConfig(config *models.ProjectConfig) error {
-	filePath := "ginshot.json"
+func SaveConfig(dir string, config *models.ProjectConfig) error {
+	filePath := dir + "/ginshot.json"
 
 	file, err := os.Create(filePath)
 	if err != nil {
