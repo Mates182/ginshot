@@ -13,7 +13,7 @@ func GetControllerTemplate(config *models.ProjectConfig, crudType int, id, model
 	if crudType == 2 || crudType == 4 {
 		args = GetRequestWithParamsTemplate(id, model, proyectName)
 	} else {
-		args = GetRequestWithBodyTemplate(proyectName)
+		args = GetRequestWithBodyTemplate(proyectName, crudType == 5)
 	}
 
 	return fmt.Sprintf(`package controller
@@ -56,13 +56,17 @@ func (ctrl *%sController) %s(c *gin.Context) {
 	)
 }
 
-func GetRequestWithBodyTemplate(projectName string) string {
+func GetRequestWithBodyTemplate(projectName string, isList bool) string {
 	return fmt.Sprintf(`var request requests.%sRequest
-	if err := c.BindJSON(&request); err != nil {
+	`+func() string {
+		if isList {
+			return ""
+		}
+		return fmt.Sprintf(`if err := c.BindJSON(&request); err != nil {
 		c.IndentedJSON(http.StatusBadRequest, responses.%sResponse{Message: "Invalid request body"})
-		return
-	}
-`, projectName, projectName)
+		return`, projectName)
+	}()+`
+`, projectName)
 }
 
 func GetRequestWithParamsTemplate(id string, model string, projectName string) string {
