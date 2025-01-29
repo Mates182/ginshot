@@ -36,7 +36,12 @@ import (
 			if dbName == "mongo" {
 				return `"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/bson"
-	"create-product/models"
+	` + func() string {
+					if crudType == 2 || crudType == 4 {
+						return ""
+					}
+					return `"` + config.ProjectName + "/models" + `"`
+				}() + `
 	"context"`
 			} else if dbName == "redis" {
 				return `"github.com/go-redis/redis/v8"`

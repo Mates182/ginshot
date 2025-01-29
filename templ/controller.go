@@ -26,7 +26,7 @@ import (
 	services "%s/service"
 	`+func() string {
 		if crudType == 2 || crudType == 4 {
-			return config.ProjectName + "/models"
+			return `"` + config.ProjectName + "/models" + `"`
 		}
 		return ""
 	}()+`
@@ -66,13 +66,13 @@ func GetRequestWithBodyTemplate(projectName string) string {
 }
 
 func GetRequestWithParamsTemplate(id string, model string, projectName string) string {
-	return fmt.Sprintf(`%s := c.Param("%s")
+	return fmt.Sprintf(`%s := c.Param("id")
 	if %s == "" {
 		c.IndentedJSON(http.StatusBadRequest, responses.%sResponse{Message: "%s is required"})
 		return
 	}
 	request := requests.%sRequest{%s: models.%s{%s: %s}}
-`, id, id,
+`, id,
 		id,
 		projectName, id,
 		projectName, model, model, id, id)
