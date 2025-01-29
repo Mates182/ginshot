@@ -23,8 +23,7 @@ func GetBrewerTemplate(config *models.ProjectConfig) string {
 	},
 	"requests": {
 		"%sRequest": {
-			"%s": "models.%s",
-			"Message": "string"
+			"%s": "models.%s"
 		}
 	},
 	"responses": {
