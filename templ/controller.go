@@ -64,7 +64,8 @@ func GetRequestWithBodyTemplate(projectName string, isList bool) string {
 		}
 		return fmt.Sprintf(`if err := c.BindJSON(&request); err != nil {
 		c.IndentedJSON(http.StatusBadRequest, responses.%sResponse{Message: "Invalid request body"})
-		return`, projectName)
+		return
+		}`, projectName)
 	}()+`
 `, projectName)
 }

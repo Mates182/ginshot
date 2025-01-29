@@ -37,7 +37,7 @@ import (
 				return `"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/bson"
 	` + func() string {
-					if crudType == 2 || crudType == 4 {
+					if crudType == 2 || crudType == 4 || crudType == 3 {
 						return ""
 					}
 					return `"` + config.ProjectName + "/models" + `"`
@@ -167,13 +167,11 @@ func GetUpdateLogicTemplate(config *models.ProjectConfig, model string, id strin
 	}
 	if result.MatchedCount == 0 {
 		return http.StatusNotFound, responses.%sResponse{Message: "%s not found"}
-	}return http.StatusInternalServerError, responses.%sResponse{Message: "Error fetching %s"}
 	}
 
-	response := responses.%sResponse{Message: "%s updated successfully", %s: %s}`, config.Database.Name, config.Database.Table,
+	response := responses.%sResponse{Message: "%s updated successfully", %s: request.%s}`, config.Database.Name, config.Database.Table,
 		id, model, id,
 		model,
-		proyectName, model,
 		proyectName, model,
 		proyectName, model,
 		proyectName, model, model, model)
