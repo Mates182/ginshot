@@ -234,7 +234,7 @@ func CreateService(config *models.ProjectConfig) error {
 	id := config.Database.ID
 
 	generateController(config, serviceName, crudType, id, model, baseDir)
-	generateService(config.ProjectName, serviceName, requestType, responseType, baseDir)
+	generateService(config.ProjectName, serviceName, requestType, responseType, baseDir, config.Service.Type)
 	generateServiceImpl(config, serviceName, crudType, model, id, baseDir, dbType)
 	updateRouter(config, routeName, routeType, serviceName, baseDir)
 

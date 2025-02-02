@@ -23,7 +23,7 @@ For example:
 
 ginshot init my-service`,
 	Args: cobra.MaximumNArgs(1), // Allows zero or one argument
-	Run:  generateProject,
+	Run:  generateTemplate,
 }
 
 var port string
@@ -33,6 +33,21 @@ func init() {
 	initCmd.Flags().StringVarP(&port, "port", "p", "", "Port for the microservice (default is 8080)")
 
 	rootCmd.AddCommand(initCmd)
+}
+func generateTemplate(cmd *cobra.Command, args []string) {
+	var name, id string
+	fmt.Print(Bold + Cyan + "Model Name:" + Magenta + "(recomended format: PascalCase) " + Grey + ">> " + Reset)
+	fmt.Scanln(&name)
+
+	fmt.Print(Bold + Cyan + "Model ID Name:" + Magenta + "(recomended format: PascalCase) " + Grey + ">> " + Reset)
+	fmt.Scanln(&id)
+	dataJSONContent := templates.GetBrewerTemplate(name, id)
+	err := writer.WriteFile("./brewer.json", dataJSONContent)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println("Brewer Template generated as brewer.json")
+
 }
 
 // generateProject creates the project structure based on the provided name or asks for it
@@ -306,6 +321,6 @@ func createGinshotJSON(dir string, config *models.ProjectConfig) error {
 
 // createBrewerTemplateJSON creates the brewer/template.json file
 func createBrewerTemplateJSON(dir string, config *models.ProjectConfig) error {
-	dataJSONContent := templates.GetBrewerTemplate(config)
+	dataJSONContent := templates.GetBrewerTemplate("", "")
 	return writer.WriteFile(dir+"/brewer/template.json", dataJSONContent)
 }

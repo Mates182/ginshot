@@ -28,7 +28,12 @@ func GetServiceImplTemplate(config *models.ProjectConfig, dbName string, service
 	return fmt.Sprintf(`package service
 
 import (
-	requests "%s/internal/data/requests"
+	`+func() string {
+		if crudType == 5 {
+			return ""
+		}
+		return `requests "` + config.ProjectName + `/internal/data/requests"`
+	}()+`
 	responses "%s/internal/data/responses"
 	"net/http"
 	`+func() string {
@@ -39,10 +44,10 @@ import (
 	` + func() string {
 					if crudType == 1 {
 						return `"fmt"`
-					} else if crudType != 5 {
+					} else if crudType == 3 || crudType == 4 {
 						return ""
 					}
-					return `"` + config.ProjectName + "/models" + `"`
+					return `"` + config.ProjectName + "/internal/data/models" + `"`
 				}() + `
 	"context"`
 			} else if dbName == "redis" {
@@ -79,11 +84,16 @@ func New%sServiceImpl(`+func() string {
 	}
 }
 
-func (service *%sServiceImpl) %sHandler(request requests.%sRequest) (int, responses.%sResponse) {
+func (service *%sServiceImpl) %sHandler(`+func() string {
+		if crudType == 5 {
+			return ""
+		}
+		return `request requests.` + serviceName + "Request"
+	}()+`) (int, responses.%sResponse) {
 	%s
 	return http.StatusOK, response
 }
-`, config.ProjectName, config.ProjectName, serviceName, serviceName, serviceName, serviceName, serviceName, serviceName, serviceName, serviceName, logic)
+`, config.ProjectName, serviceName, serviceName, serviceName, serviceName, serviceName, serviceName, serviceName, logic)
 }
 
 func GetCreateLogicTemplate(config *models.ProjectConfig, model string, id string) string {
@@ -110,7 +120,7 @@ func GetDeleteLogicTemplate(config *models.ProjectConfig, model string, id strin
 	proyectName := formatter.ToPascalCase(config.ProjectName)
 	return fmt.Sprintf(`mongoCollection := service.DBClient.Database("%s").Collection("%s")
 
-	filter := bson.M{"%s": request.%s.%s}
+	filter := bson.M{"%s": request.%s}
 	result, err := mongoCollection.DeleteOne(context.Background(), filter)
 	if err != nil {
 		return http.StatusInternalServerError, responses.%sResponse{Message: "Error deleting %s"}
@@ -119,14 +129,14 @@ func GetDeleteLogicTemplate(config *models.ProjectConfig, model string, id strin
 		return http.StatusNotFound, responses.%sResponse{Message: "%s not found"}
 	}
 
-	response := responses.%sResponse{Message: "%s deleted successfully", %s: request.%s}`, config.Database.Name, config.Database.Collection, id, model, id, proyectName, model, proyectName, model, proyectName, model, model, model)
+	response := responses.%sResponse{Message: "%s deleted successfully", %s: request.%s}`, config.Database.Name, config.Database.Collection, id, id, proyectName, model, proyectName, model, proyectName, model, id, id)
 }
 func GetReadLogicTemplate(config *models.ProjectConfig, model string, id string) string {
 	proyectName := formatter.ToPascalCase(config.ProjectName)
 	return fmt.Sprintf(`mongoCollection := service.DBClient.Database("%s").Collection("%s")
 
 	var %s models.%s
-	err := mongoCollection.FindOne(context.Background(), bson.M{"%s": request.%s.%s}).Decode(&%s)
+	err := mongoCollection.FindOne(context.Background(), bson.M{"%s": request.%s}).Decode(&%s)
 	if err == mongo.ErrNoDocuments {
 		return http.StatusNotFound, responses.%sResponse{Message: "%s not found"}
 	}
@@ -134,7 +144,9 @@ func GetReadLogicTemplate(config *models.ProjectConfig, model string, id string)
 		return http.StatusInternalServerError, responses.%sResponse{Message: "Error fetching %s"}
 	}
 
-	response := responses.%sResponse{Message: "%s retrieved successfully", %s: %s}`, config.Database.Name, config.Database.Collection, model, model, id, model, id, model, proyectName, model, proyectName, model, proyectName, model, model, model)
+	response := responses.%sResponse{Message: "%s retrieved successfully", %s: %s}`, config.Database.Name, config.Database.Collection,
+		model, model,
+		id, id, model, proyectName, model, proyectName, model, proyectName, model, model, model)
 }
 func GetListLogicTemplate(config *models.ProjectConfig, model string, id string) string {
 	proyectName := formatter.ToPascalCase(config.ProjectName)

@@ -95,7 +95,7 @@ var mixCmd = &cobra.Command{
 		id := config.Database.ID
 
 		generateController(config, serviceName, crudType, id, model, "")
-		generateService(projectName, serviceName, requestType, responseType, "")
+		generateService(projectName, serviceName, requestType, responseType, "", "")
 		generateServiceImpl(config, serviceName, crudType, model, id, dbType)
 		updateRouter(config, routeName, routeType, serviceName, "")
 
@@ -106,25 +106,35 @@ var mixCmd = &cobra.Command{
 func generateController(config *models.ProjectConfig, serviceName string, crudType int, id, model string, baseDir string) {
 	controllerTemplate := templates.GetControllerTemplate(config, crudType, id, model)
 
-	dir := fmt.Sprintf("%s/internal/controller/%s-controller.go", baseDir, serviceName)
+	dir := fmt.Sprintf("%s/internal/controller/%s-controller.go", baseDir, formatter.ToLowerCase(serviceName))
 	writer.WriteFile(dir, controllerTemplate)
 }
 
-func generateService(projectName, serviceName, requestType, responseType string, baseDir string) {
+func generateService(projectName, serviceName, requestType, responseType string, baseDir string, crudType string) {
 	serviceTemplate := `// auto-generated with ginshot
 package service
 
 import (
-	requests "{{.ProjectName}}/data/requests"
-	responses "{{.ProjectName}}/data/responses"
+	` + func() string {
+		if crudType == "list" {
+			return ""
+		}
+		return `requests "` + projectName + `/internal/data/requests"`
+	}() + `
+	responses "{{.ProjectName}}/internal/data/responses"
 )
 
 type {{.ServiceName}}Service interface {
-	{{.ServiceName}}Handler(request requests.{{.RequestType}}) (int, responses.{{.ResponseType}})
+	{{.ServiceName}}Handler(` + func() string {
+		if crudType == "list" {
+			return ""
+		}
+		return `request requests.` + requestType
+	}() + `) (int, responses.{{.ResponseType}})
 }
 `
 
-	fileName := fmt.Sprintf("%s/internal/service/%s-service.go", baseDir, serviceName)
+	fileName := fmt.Sprintf("%s/internal/service/%s-service.go", baseDir, formatter.ToLowerCase(serviceName))
 	file, _ := os.Create(fileName)
 	defer file.Close()
 
@@ -147,7 +157,7 @@ func generateServiceImpl(config *models.ProjectConfig, serviceName string, crudT
 
 	serviceImplTemplate := templates.GetServiceImplTemplate(config, dbName, serviceName, model, id, crudType)
 
-	dir := fmt.Sprintf("%s/internal/service/%s-service-impl.go", baseDir, serviceName)
+	dir := fmt.Sprintf("%s/internal/service/%s-service-impl.go", baseDir, formatter.ToLowerCase(serviceName))
 	writer.WriteFile(dir, serviceImplTemplate)
 }
 

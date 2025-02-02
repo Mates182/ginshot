@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/mates182/ginshot/formatter"
 	"github.com/mates182/ginshot/models"
 	"github.com/mates182/ginshot/reader"
 	"github.com/spf13/cobra"
@@ -130,7 +131,7 @@ func generateScaffold(data map[string]map[string]interface{}, directory, fileTyp
 	}
 
 	for name, fields := range data {
-		fileName := fmt.Sprintf("%s%s.go", directory, name)
+		fileName := fmt.Sprintf("%s%s.go", directory, formatter.ToLowerCase(name))
 		fileContent := generator(name, fields, config.ProjectName)
 		if err := os.WriteFile(fileName, []byte(fileContent), 0644); err != nil {
 			fmt.Printf("Error writing %s.go: %v\n", fileType, err)
@@ -145,7 +146,7 @@ func generateModelGo(modelName string, fields map[string]interface{}, projectNam
 	var modelFields strings.Builder
 
 	for fieldName, fieldType := range fields {
-		tags := fmt.Sprintf("`json:\"%s\" bson:\"%s\"`", fieldName, fieldName)
+		tags := fmt.Sprintf("`json:\"%s\" bson:\"%s\"`", formatter.ToLowerCase(fieldName), formatter.ToLowerCase(fieldName))
 		modelFields.WriteString(fmt.Sprintf("\t%s %s %s\n", fieldName, fieldType, tags))
 	}
 
@@ -177,10 +178,10 @@ func generateStruct(structType, structName string, fields map[string]interface{}
 	needsImport := false
 
 	for fieldName, fieldType := range fields {
-		if strings.HasPrefix(fmt.Sprintf("%v", fieldType), "models.") {
+		if strings.HasPrefix(fmt.Sprintf("%v", fieldType), "models.") || strings.HasPrefix(fmt.Sprintf("%v", fieldType), "[]models.") {
 			needsImport = true
 		}
-		structFields.WriteString(fmt.Sprintf("\t%s %v `json:\"%s\"`\n", fieldName, fieldType, fieldName))
+		structFields.WriteString(fmt.Sprintf("\t%s %v `json:\"%s\"`\n", fieldName, fieldType, formatter.ToLowerCase(fieldName)))
 	}
 
 	importStatement := ""

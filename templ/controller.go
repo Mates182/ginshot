@@ -19,17 +19,17 @@ func GetControllerTemplate(config *models.ProjectConfig, crudType int, id, model
 	return fmt.Sprintf(`package controller
 
 import (
-	"net/http"
+	
 	"github.com/gin-gonic/gin"
-	requests "%s/internal/data/requests"
-	responses "%s/internal/data/responses" 
-	services "%s/internal/service"
 	`+func() string {
-		if crudType == 2 || crudType == 4 {
-			return `"` + config.ProjectName + "/models" + `"`
+		if crudType == 5 {
+			return ""
 		}
-		return ""
+		return `"net/http"
+	requests "` + config.ProjectName + `/internal/data/requests"
+	responses "` + config.ProjectName + `/internal/data/responses"`
 	}()+`
+	services "%s/internal/service"
 )
 
 type %sController struct {
@@ -44,10 +44,15 @@ func New%sController(service services.%sService) *%sController {
 
 func (ctrl *%sController) %s(c *gin.Context) {
 	%s
-	status, res := ctrl.%sService.%sHandler(request)
+	status, res := ctrl.%sService.%sHandler(`+func() string {
+		if crudType == 5 {
+			return ""
+		}
+		return "request"
+	}()+`)
 
 	c.IndentedJSON(status, res)
-}`, config.ProjectName, config.ProjectName, config.ProjectName,
+}`, config.ProjectName,
 		proyectName, proyectName, proyectName,
 		proyectName, proyectName, proyectName, proyectName, proyectName,
 		proyectName, proyectName,
@@ -57,17 +62,15 @@ func (ctrl *%sController) %s(c *gin.Context) {
 }
 
 func GetRequestWithBodyTemplate(projectName string, isList bool) string {
+	if isList {
+		return ""
+	}
 	return fmt.Sprintf(`var request requests.%sRequest
-	`+func() string {
-		if isList {
-			return ""
-		}
-		return fmt.Sprintf(`if err := c.BindJSON(&request); err != nil {
+		if err := c.BindJSON(&request); err != nil {
 		c.IndentedJSON(http.StatusBadRequest, responses.%sResponse{Message: "Invalid request body"})
 		return
-		}`, projectName)
-	}()+`
-`, projectName)
+		}`, projectName, projectName)
+
 }
 
 func GetRequestWithParamsTemplate(id string, model string, projectName string) string {
@@ -76,9 +79,9 @@ func GetRequestWithParamsTemplate(id string, model string, projectName string) s
 		c.IndentedJSON(http.StatusBadRequest, responses.%sResponse{Message: "%s is required"})
 		return
 	}
-	request := requests.%sRequest{%s: models.%s{%s: %s}}
+	request := requests.%sRequest{%s: %s}
 `, id,
 		id,
 		projectName, id,
-		projectName, model, model, id, id)
+		projectName, id, id)
 }
