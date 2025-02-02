@@ -14,7 +14,7 @@ func GetDockerComposeTemplate(config *models.ProjectConfig) string {
 services:
   # %s API Container
   %s:
-    build: .
+    build: ..
     ports:
       - "%d:%d"
     container_name: %s

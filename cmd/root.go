@@ -6,6 +6,7 @@ package cmd
 import (
 	"os"
 
+	"github.com/mates182/ginshot/models"
 	"github.com/spf13/cobra"
 )
 
@@ -21,6 +22,8 @@ const (
 	White   = "\033[37m"
 	Grey    = "\033[38;5;245m"
 )
+
+var projectConfig *models.ProjectConfig
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{

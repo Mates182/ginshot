@@ -1,21 +1,30 @@
 {
-	"project_name": "test",
-	"models": {
-		"ProjectConfig":{
-            "ProjectName": "string",
-            "Port": "int",
-            "Cors": "bool",
-            "Dockerfile": "bool",
-            "DockerCompose": "bool",
-            "GitIgnore": "bool",
-            "Database": "Database"
-        },
-        "Database": {
-            "Name": "string",
-            "Type": "string",
-            "Table": "string",
-            "Model": "string",
-            "ID": "string"
-        }
-	}
+  "project_name": "test",
+  "models": {
+    "ProjectConfig": {
+      "ProjectName": "string",
+      "Port": "int",
+      "Cors": "bool",
+      "Dockerfile": "bool",
+      "DockerCompose": "bool",
+      "GitIgnore": "bool",
+      "Database": "Database"
+    },
+    "Database": {
+      "Name": "string",
+      "Type": "string",
+      "Table": "string",
+      "Model": "string",
+      "ID": "string"
+    },
+    "brewer": {
+      "root": "root"
+    },
+    "root": {
+      "domain": "string",
+      "master_docker_compose": "bool",
+      "gitignore": "bool",
+      "database": "database"
+    }
+  }
 }

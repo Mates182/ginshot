@@ -8,7 +8,7 @@ import (
 // ToPascalCase converts a lowercase string with hyphens to PascalCase
 func ToPascalCase(input string) string {
 	// Split the string by hyphens
-	words := strings.Split(input, "-")
+	words := strings.Split(input, "_")
 
 	// Capitalize each word and concatenate them
 	for i, word := range words {
@@ -26,7 +26,7 @@ func ToLowerCase(input string) string {
 	for i, r := range input {
 		// If it's an uppercase letter and not the first character, add a hyphen before it
 		if unicode.IsUpper(r) && i > 0 {
-			result = append(result, '-')
+			result = append(result, '_')
 		}
 		// Append the lowercase version of the character
 		result = append(result, unicode.ToLower(r))

@@ -1,0 +1,119 @@
+{
+  "root": {
+    "domain": "model",
+    "master-docker-compose": true,
+    "gitignore": true,
+    "database": {
+      "type": "mongo",
+      "name": "models",
+      "collection": "models",
+      "model": "Model",
+      "id": "ID"
+    }
+  },
+  "general": {
+    "port": 80,
+    "dockerfile": true,
+    "docker-compose": true,
+    "database": {
+      "type": "mongo",
+      "name": "models",
+      "collection": "models",
+      "model": "Model",
+      "id": "ID"
+    },
+    "models": {
+      "Model": {
+        "_id": "string",
+        "message": "string",
+        "greeting": "Greeting"
+      },
+      "Greeting": {
+        "Hello": "string"
+      }
+    },
+    "responses": {
+      "TestResponse": {
+        "Model": "models.Model",
+        "Message": "string"
+      }
+    },
+
+    "messages": {
+      "TopicMessage": {
+        "Service": "string",
+        "Message": "string",
+        "Model": "models.Model"
+      }
+    }
+  },
+  "services": {
+    "create_model": {
+      "type": "create",
+      "responses": {
+        "CreateModelRequest": {
+          "Model": "models.Model",
+          "Message": "string"
+        }
+      },
+      "cors": {
+        "methods": ["GET", "POST"]
+      }
+    },
+    "get_model_by_id": {
+      "type": "get",
+      "responses": {
+        "GetModelRequest": {
+          "Model": "models.Model"
+        }
+      },
+      "cors": {
+        "methods": ["GET"]
+      }
+    },
+    "list_models": {
+      "type": "list",
+      "responses": {
+        "ListModelsRequest": {
+          "Models": "[]models.Model"
+        }
+      },
+      "cors": {
+        "methods": ["GET"]
+      }
+    },
+    "update_model": {
+      "type": "update",
+      "requests": {
+        "UpdateModelRequest": {
+          "Model": "models.Model"
+        }
+      },
+      "responses": {
+        "UpdateModelResponse": {
+          "Model": "models.Model",
+          "Message": "string"
+        }
+      },
+      "cors": {
+        "methods": ["GET", "PUT"]
+      }
+    },
+    "delete_model": {
+      "type": "delete",
+      "requests": {
+        "DeleteModelRequest": {
+          "ID": "string"
+        }
+      },
+      "responses": {
+        "DeleteModelResponse": {
+          "Message": "string"
+        }
+      },
+      "cors": {
+        "methods": ["GET", "DELETE"]
+      }
+    }
+  }
+}

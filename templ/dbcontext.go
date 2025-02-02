@@ -16,7 +16,7 @@ package dbcontext
 
 import (
 	"context"
-	"` + config.ProjectName + `/secrets"
+	"`+config.ProjectName+`/internal/secrets"
 	"fmt"
 	"sync"
 
@@ -82,9 +82,9 @@ func GetDBClient() *redis.Client {
 	return client
 }
 `
-default:
-	fmt.Println("Unsupported database type.")
-	
-}
-return dbContextTemplate
+	default:
+		fmt.Println("Unsupported database type.")
+
+	}
+	return dbContextTemplate
 }

@@ -1,9 +1,9 @@
 package models
 
 type Database struct {
-	Table string `json:"Table"`
-	Model string `json:"Model"`
-	ID string `json:"ID"`
-	Name string `json:"Name"`
-	Type string `json:"Type"`
+	Model      string `json:"model" bson:"Model"`
+	ID         string `json:"id" bson:"ID"`
+	Name       string `json:"name" bson:"Name"`
+	Type       string `json:"type" bson:"Type"`
+	Collection string `json:"collection" bson:"Table"`
 }

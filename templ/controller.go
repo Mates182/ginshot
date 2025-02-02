@@ -21,9 +21,9 @@ func GetControllerTemplate(config *models.ProjectConfig, crudType int, id, model
 import (
 	"net/http"
 	"github.com/gin-gonic/gin"
-	requests "%s/data/requests"
-	responses "%s/data/responses" 
-	services "%s/service"
+	requests "%s/internal/data/requests"
+	responses "%s/internal/data/responses" 
+	services "%s/internal/service"
 	`+func() string {
 		if crudType == 2 || crudType == 4 {
 			return `"` + config.ProjectName + "/models" + `"`

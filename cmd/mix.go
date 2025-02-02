@@ -94,23 +94,23 @@ var mixCmd = &cobra.Command{
 
 		id := config.Database.ID
 
-		generateController(config, serviceName, crudType, id, model)
-		generateService(projectName, serviceName, requestType, responseType)
+		generateController(config, serviceName, crudType, id, model, "")
+		generateService(projectName, serviceName, requestType, responseType, "")
 		generateServiceImpl(config, serviceName, crudType, model, id, dbType)
-		updateRouter(config, routeName, routeType, serviceName)
+		updateRouter(config, routeName, routeType, serviceName, "")
 
 		fmt.Println("Files generated and router updated successfully.")
 	},
 }
 
-func generateController(config *models.ProjectConfig, serviceName string, crudType int, id, model string) {
+func generateController(config *models.ProjectConfig, serviceName string, crudType int, id, model string, baseDir string) {
 	controllerTemplate := templates.GetControllerTemplate(config, crudType, id, model)
 
-	dir := fmt.Sprintf("./controller/%s-controller.go", serviceName)
+	dir := fmt.Sprintf("%s/internal/controller/%s-controller.go", baseDir, serviceName)
 	writer.WriteFile(dir, controllerTemplate)
 }
 
-func generateService(projectName, serviceName, requestType, responseType string) {
+func generateService(projectName, serviceName, requestType, responseType string, baseDir string) {
 	serviceTemplate := `// auto-generated with ginshot
 package service
 
@@ -124,7 +124,7 @@ type {{.ServiceName}}Service interface {
 }
 `
 
-	fileName := fmt.Sprintf("./service/%s-service.go", serviceName)
+	fileName := fmt.Sprintf("%s/internal/service/%s-service.go", baseDir, serviceName)
 	file, _ := os.Create(fileName)
 	defer file.Close()
 
@@ -137,7 +137,7 @@ type {{.ServiceName}}Service interface {
 	})
 }
 
-func generateServiceImpl(config *models.ProjectConfig, serviceName string, crudType int, model string, id string, db ...string) {
+func generateServiceImpl(config *models.ProjectConfig, serviceName string, crudType int, model string, id string, baseDir string, db ...string) {
 	// Set default value if includeBson is not provided
 	dbName := ""
 	if len(db) > 0 {
@@ -147,13 +147,13 @@ func generateServiceImpl(config *models.ProjectConfig, serviceName string, crudT
 
 	serviceImplTemplate := templates.GetServiceImplTemplate(config, dbName, serviceName, model, id, crudType)
 
-	dir := fmt.Sprintf("./service/%s-service-impl.go", serviceName)
+	dir := fmt.Sprintf("%s/internal/service/%s-service-impl.go", baseDir, serviceName)
 	writer.WriteFile(dir, serviceImplTemplate)
 }
 
-func updateRouter(config *models.ProjectConfig, routeName, routeType, serviceName string) {
+func updateRouter(config *models.ProjectConfig, routeName, routeType, serviceName, baseDir string) {
 	dbName := config.Database.Name
-	routerFileName := "./router/router.go"
+	routerFileName := baseDir + "/router/router.go"
 	file, _ := os.OpenFile(routerFileName, os.O_RDWR, 0644)
 	defer file.Close()
 
@@ -175,9 +175,9 @@ func updateRouter(config *models.ProjectConfig, routeName, routeType, serviceNam
 		newContent := strings.Replace(fileContent, insertPoint, insertPoint+insertCode, 1)
 
 		// Import statements for both controller and service
-		importController := "\n\t\"" + config.ProjectName + "/controller\""
-		importService := "\n\t\"" + config.ProjectName + "/service\""
-		importDbContext := "\n\t\"" + config.ProjectName + "/dbcontext/" + dbName + "\""
+		importController := "\n\t\"" + config.ProjectName + "/internal/controller\""
+		importService := "\n\t\"" + config.ProjectName + "/internal/service\""
+		importDbContext := "\n\t\"" + config.ProjectName + "/internal/repository" + "\""
 
 		importInsertPoint := "import ("
 		if !strings.Contains(newContent, importController) {

@@ -10,7 +10,6 @@ import (
 func GetBrewerTemplate(config *models.ProjectConfig) string {
 	projectName := formatter.ToPascalCase(config.ProjectName)
 	return fmt.Sprintf(`{
-	"project_name": "%s",
 	"models": {
 		"%s": {
 			"ID": "string",
@@ -31,11 +30,18 @@ func GetBrewerTemplate(config *models.ProjectConfig) string {
 			"%s": "models.%s",
 			"Message": "string"
 		}
+	},
+	"messages": {
+		"TopicMessage": {
+			"Service": "string",
+			"Message": "string",
+			"%s": "models.%s"
+		}
 	}
-}`, config.ProjectName,
-		config.Database.Model,
+}`, config.Database.Model,
 		projectName,
 		config.Database.Model, config.Database.Model,
 		projectName,
+		config.Database.Model, config.Database.Model,
 		config.Database.Model, config.Database.Model)
 }

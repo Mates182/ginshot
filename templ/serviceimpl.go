@@ -28,8 +28,8 @@ func GetServiceImplTemplate(config *models.ProjectConfig, dbName string, service
 	return fmt.Sprintf(`package service
 
 import (
-	requests "%s/data/requests"
-	responses "%s/data/responses"
+	requests "%s/internal/data/requests"
+	responses "%s/internal/data/responses"
 	"net/http"
 	`+func() string {
 		if dbName != "" {
@@ -37,7 +37,9 @@ import (
 				return `"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/bson"
 	` + func() string {
-					if crudType == 2 || crudType == 4 || crudType == 3 {
+					if crudType == 1 {
+						return `"fmt"`
+					} else if crudType != 5 {
 						return ""
 					}
 					return `"` + config.ProjectName + "/models" + `"`
@@ -101,7 +103,7 @@ func GetCreateLogicTemplate(config *models.ProjectConfig, model string, id strin
 
 	fmt.Println(result.InsertedID)
 
-	response := responses.%sResponse{Message: "%s created successfully", %s: request.%s}`, config.Database.Name, config.Database.Table, model, id, id, model, id, proyectName, model, id, model, proyectName, model, proyectName, model, model, model)
+	response := responses.%sResponse{Message: "%s created successfully", %s: request.%s}`, config.Database.Name, config.Database.Collection, model, id, id, model, id, proyectName, model, id, model, proyectName, model, proyectName, model, model, model)
 }
 
 func GetDeleteLogicTemplate(config *models.ProjectConfig, model string, id string) string {
@@ -117,7 +119,7 @@ func GetDeleteLogicTemplate(config *models.ProjectConfig, model string, id strin
 		return http.StatusNotFound, responses.%sResponse{Message: "%s not found"}
 	}
 
-	response := responses.%sResponse{Message: "%s deleted successfully", %s: request.%s}`, config.Database.Name, config.Database.Table, id, model, id, proyectName, model, proyectName, model, proyectName, model, model, model)
+	response := responses.%sResponse{Message: "%s deleted successfully", %s: request.%s}`, config.Database.Name, config.Database.Collection, id, model, id, proyectName, model, proyectName, model, proyectName, model, model, model)
 }
 func GetReadLogicTemplate(config *models.ProjectConfig, model string, id string) string {
 	proyectName := formatter.ToPascalCase(config.ProjectName)
@@ -132,7 +134,7 @@ func GetReadLogicTemplate(config *models.ProjectConfig, model string, id string)
 		return http.StatusInternalServerError, responses.%sResponse{Message: "Error fetching %s"}
 	}
 
-	response := responses.%sResponse{Message: "%s retrieved successfully", %s: %s}`, config.Database.Name, config.Database.Table, model, model, id, model, id, model, proyectName, model, proyectName, model, proyectName, model, model, model)
+	response := responses.%sResponse{Message: "%s retrieved successfully", %s: %s}`, config.Database.Name, config.Database.Collection, model, model, id, model, id, model, proyectName, model, proyectName, model, proyectName, model, model, model)
 }
 func GetListLogicTemplate(config *models.ProjectConfig, model string, id string) string {
 	proyectName := formatter.ToPascalCase(config.ProjectName)
@@ -149,7 +151,7 @@ func GetListLogicTemplate(config *models.ProjectConfig, model string, id string)
 		return http.StatusInternalServerError, responses.%sResponse{Message: "Error decoding %s"}
 	}
 
-	response := responses.%sResponse{Message: "All %s retrieved successfully", %s: %s}`, config.Database.Name, config.Database.Table,
+	response := responses.%sResponse{Message: "All %s retrieved successfully", %s: %s}`, config.Database.Name, config.Database.Collection,
 		proyectName, model,
 		model, model,
 		model,
@@ -169,7 +171,7 @@ func GetUpdateLogicTemplate(config *models.ProjectConfig, model string, id strin
 		return http.StatusNotFound, responses.%sResponse{Message: "%s not found"}
 	}
 
-	response := responses.%sResponse{Message: "%s updated successfully", %s: request.%s}`, config.Database.Name, config.Database.Table,
+	response := responses.%sResponse{Message: "%s updated successfully", %s: request.%s}`, config.Database.Name, config.Database.Collection,
 		id, model, id,
 		model,
 		proyectName, model,

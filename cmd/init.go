@@ -202,6 +202,9 @@ func createProjectDirectory(dir string) error {
 	if err := writer.CreateDir(fmt.Sprintf("%s/data/responses", dir)); err != nil {
 		return err
 	}
+	if err := writer.CreateDir(fmt.Sprintf("%s/data/messages", dir)); err != nil {
+		return err
+	}
 
 	// Create the 'models' directory
 	if err := writer.CreateDir(fmt.Sprintf("%s/models", dir)); err != nil {

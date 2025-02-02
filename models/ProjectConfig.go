@@ -1,11 +1,13 @@
 package models
 
 type ProjectConfig struct {
-	Dockerfile bool `json:"Dockerfile"`
-	DockerCompose bool `json:"DockerCompose"`
-	GitIgnore bool `json:"GitIgnore"`
-	Database Database `json:"Database"`
-	ProjectName string `json:"ProjectName"`
-	Port int `json:"Port"`
-	Cors bool `json:"Cors"`
+	GitIgnore     bool     `json:"GitIgnore" bson:"GitIgnore"`
+	Database      Database `json:"Database" bson:"Database"`
+	ProjectName   string   `json:"ProjectName" bson:"ProjectName"`
+	Port          int      `json:"Port" bson:"Port"`
+	Cors          bool     `json:"Cors" bson:"Cors"`
+	Dockerfile    bool     `json:"Dockerfile" bson:"Dockerfile"`
+	DockerCompose bool     `json:"DockerCompose" bson:"DockerCompose"`
+	Service       Service  `json:"Service" bson:"Service"`
+	General       Service  `json:"General"`
 }

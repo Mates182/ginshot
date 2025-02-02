@@ -81,9 +81,6 @@ func createDBFiles(db, name string) {
 		fmt.Println("Error reading project config:", err)
 		return
 	}
-	config.Database.Name = name
-	config.Database.Type = db
-	config.Database.Table = name
 
 	writer.SaveConfig(".", config)
 	switch db {
@@ -101,15 +98,15 @@ func createDBFiles(db, name string) {
 		fmt.Println("Unknown database type. Please choose either redis or mongo.")
 	}
 	// Generate dbcontext files
-	generateDBContextFiles(config, db, name)
+	//generateDBContextFiles(config, db, name)
 	// Pass the name to the function
-	generateSecretsFile(db, name) // Pass the name to the function
+	//generateSecretsFile(db, name) // Pass the name to the function
 
-	generateEnvFile(db, name)
+	//generateEnvFile(db, name)
 
-	addDatabaseToDockerCompose(db, name)
+	//addDatabaseToDockerCompose(db, name)
 
-	addDBConfig(db, name)
+	//addDBConfig(db, name)
 
 	// Clean up Go modules
 	if err := runGoModTidy("."); err != nil {
@@ -150,9 +147,8 @@ func promptForName(db string) {
 	createDBFiles(db, name)
 }
 
-func generateDBContextFiles(config *models.ProjectConfig, db, name string) {
+func generateDBContextFiles(config *models.ProjectConfig, db, name, baseDir string) {
 	// Define the base directory for dbcontext
-	baseDir := fmt.Sprintf("dbcontext/%s", name)
 
 	// Create the directory for dbcontext
 	err := os.MkdirAll(baseDir, 0755)
@@ -190,9 +186,9 @@ func generateDBContextFiles(config *models.ProjectConfig, db, name string) {
 	fmt.Printf("Successfully generated %s/dbcontext.go for %s\n", baseDir, db)
 }
 
-func generateSecretsFile(db string, name string) {
+func generateSecretsFile(db string, name string, dir string) {
 	// Define the secrets directory
-	secretsDir := "secrets"
+	secretsDir := dir + "/internal/secrets"
 	err := os.MkdirAll(secretsDir, 0755)
 	if err != nil {
 		fmt.Println("Error creating secrets directory:", err)
@@ -285,13 +281,13 @@ func Get` + name + `DBPassword() string {
 	fmt.Printf("Successfully generated %s/env.go\n", secretsDir)
 }
 
-func generateEnvFile(db, name string) {
+func generateEnvFile(db, name, baseDir string) {
 	// Define the template based on the database type
 	var envTemplate string
 	switch db {
 	case "mongo":
 		envTemplate = `# MongoDB Connection URI for ` + name + `
-` + name + `_URI=mongodb://localhost:27017/` + name
+` + name + `_URI=mongodb://user:password@localhost:27017/`
 
 	case "redis":
 		envTemplate = `# Redis Connection Details for ` + name + `
@@ -304,7 +300,7 @@ func generateEnvFile(db, name string) {
 	}
 
 	// Create the .env file
-	file, err := os.OpenFile(".env", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	file, err := os.OpenFile(baseDir+"/.env", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		fmt.Println("Error creating .env file:", err)
 		return
@@ -328,9 +324,9 @@ func generateEnvFile(db, name string) {
 }
 
 // addDatabaseToDockerCompose adds MongoDB or Redis service to the docker-compose.yml based on the provided database type
-func addDatabaseToDockerCompose(dbType, name string) {
+func addDatabaseToDockerCompose(dbType, name, dir string) {
 	// Read the docker-compose.yml file
-	filePath := "./docker-compose.yml"
+	filePath := dir + "/deployments/docker-compose.yml"
 	fileContent, err := os.ReadFile(filePath)
 	if err != nil {
 		fmt.Println("Error reading docker-compose.yml:", err)
@@ -344,7 +340,7 @@ func addDatabaseToDockerCompose(dbType, name string) {
 	mongoService := `
   ` + name + `-db:
     build:
-      context: ./config/` + name + `
+      context: ../../database/` + name + `
       dockerfile: Dockerfile
     container_name: ` + name + `-db
     environment:
@@ -420,20 +416,17 @@ func addDatabaseToDockerCompose(dbType, name string) {
 	fmt.Println("docker-compose.yml updated successfully.")
 }
 
-func addDBConfig(db string, name string) {
-	if db == "mongo" {
-		dirPath := "config/" + name
+func addDBConfig(dbConfig *models.Database) {
+	if dbConfig.Type == "mongo" {
+		dirPath := fmt.Sprintf("./database/%s", dbConfig.Name)
 		err := os.MkdirAll(dirPath, 0755)
 		if err != nil {
 			fmt.Println("Error creating config directory:", err)
 			return
 		}
-		var collection_name string
-		fmt.Print("Enter a collection name: ")
-		fmt.Scanln(&collection_name)
 
 		initDBScript := `#!/bin/bash
-mongoimport --host localhost --db ` + name + ` --collection ` + collection_name + ` --file /data/backup.json --jsonArray
+mongoimport --host localhost --db ` + dbConfig.Name + ` --collection ` + dbConfig.Collection + ` --file /data/backup.json --jsonArray
 echo "Database initialized successfully"`
 
 		backupData := `[{
